@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BoraIPTVPlayer"
+rootProject.name = "NextGen Xtream AI IPTV 4k"
 include(":app")
