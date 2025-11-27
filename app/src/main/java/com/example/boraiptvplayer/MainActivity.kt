@@ -421,9 +421,18 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                         }.take(20)
                     } else emptyList()
 
-                    // --- SON EKLENENLER ---
-                    val newMovies = safeMovies.sortedByDescending { it.streamId }.take(10)
-                    val newSeries = safeSeries.sortedByDescending { it.seriesId }.take(5)
+                    // --- SON EKLENENLER (GÜNCELLENDİ) ---
+                    // Önce film/dizi ismindeki yıla (örn: 2024) bakar, sonra ID sırasına göre dizer.
+                    val newMovies = safeMovies.sortedWith(
+                        compareByDescending<VodStream> { getYearFromName(it.name) }
+                            .thenByDescending { it.streamId }
+                    ).take(10)
+
+                    val newSeries = safeSeries.sortedWith(
+                        compareByDescending<com.example.boraiptvplayer.network.SeriesStream> { getYearFromName(it.name) }
+                            .thenByDescending { it.seriesId }
+                    ).take(5)
+
                     val latest = mutableListOf<ChannelWithEpg>()
                     newMovies.forEach { m -> latest.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0","0","Film","","",""))) }
                     newSeries.forEach { s -> val img = s.cover ?: s.streamIcon; latest.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, img, s.categoryId), EpgListing("0","0","Dizi","","",""))) }
@@ -579,4 +588,13 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private fun openSeriesList() { activeProfile?.let { val intent = Intent(this, SeriesListActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
     private fun showProfileWarning() { Toast.makeText(this, getString(R.string.msg_select_profile), Toast.LENGTH_SHORT).show(); showProfileSelectionDialog() }
     private fun formatTimestamp(timestamp: String): String { return try { val expiryLong = timestamp.toLong() * 1000; val date = Date(expiryLong); val sdf = SimpleDateFormat("dd MMMM yyyy", Locale("tr")); sdf.timeZone = TimeZone.getDefault(); sdf.format(date) } catch (e: Exception) { "Geçersiz Tarih" } }
+
+    // Film isminden yılı çeken yardımcı fonksiyon (YENİ EKLENDİ)
+    private fun getYearFromName(name: String?): Int {
+        if (name.isNullOrEmpty()) return 0
+        // 1900-2099 arası yılları bulur
+        val regex = "(19|20)\\d{2}".toRegex()
+        val lastMatch = regex.findAll(name).lastOrNull()
+        return lastMatch?.value?.toIntOrNull() ?: 0
+    }
 }

@@ -43,6 +43,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.TimeUnit
+import okhttp3.OkHttpClient
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayerActivity : BaseActivity() {
@@ -200,8 +202,7 @@ class PlayerActivity : BaseActivity() {
                 trackSelector = DefaultTrackSelector(this)
                 applyGlobalSettings(trackSelector!!)
 
-                // --- TUNNELING OPTİMİZASYONU (YENİ) ---
-                // CPU yükünü azaltmak için Tunneling açıyoruz.
+                // --- TUNNELING OPTİMİZASYONU ---
                 try {
                     val parametersBuilder = trackSelector!!.buildUponParameters()
                     parametersBuilder.setTunnelingEnabled(true)
@@ -210,40 +211,52 @@ class PlayerActivity : BaseActivity() {
                     // Cihaz desteklemiyorsa pas geç
                 }
 
-                // --- 1. TURBO MOTOR: OkHttpDataSource ---
-                val okHttpDataSourceFactory = OkHttpDataSource.Factory(RetrofitClient.okHttpClient)
+                // --- 1. GÜÇLENDİRİLMİŞ BAĞLANTI (OkHttp) ---
+                // İnternet dalgalanmalarına karşı özel istemci oluşturuyoruz
+                val okHttpClient = OkHttpClient.Builder()
+                    .connectTimeout(20, TimeUnit.SECONDS) // Bağlanma süresi 20sn
+                    .readTimeout(20, TimeUnit.SECONDS)    // Veri okuma süresi 20sn
+                    .followRedirects(true)
+                    .followSslRedirects(true)
+                    .build()
+
+                val okHttpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
                     .setUserAgent("BoraIPTV/1.0 (Android; Mobile)")
 
+                // Cache Ayarları (Canlı yayında kapalı, filmde açık)
                 val dataSourceFactory: DataSource.Factory = if (streamType != "live") {
                     setupCache(this, okHttpDataSourceFactory)
                 } else {
                     okHttpDataSourceFactory
                 }
 
-                // --- 2. RENDERER (YENİ) ---
+                // --- 2. RENDERER (Donanım Hızlandırma) ---
                 val renderersFactory = DefaultRenderersFactory(this)
                     .setEnableDecoderFallback(true)
-                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER) // Donanım öncelikli
+                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
 
-                // --- 3. HIZLI BAŞLATMA & BUFFER (YENİ - Agresif) ---
+                // --- 3. STABİLİTE BUFFER AYARLARI ---
+                // Yayın kopmalarını engellemek için geniş depo alanı
                 val loadControl = DefaultLoadControl.Builder()
                     .setBufferDurationsMs(
-                        1000,   // Min: 3sn yerine 1sn (Anında başla)
-                        30000,  // Max: 30sn
-                        500,    // Play: 0.5sn veri gelince oynat (Şimşek hızında)
-                        1000    // Rebuffer: Donarsa 1sn bekle
+                        15_000, // Min Buffer: 15 Saniye (En kritik ayar budur)
+                        50_000, // Max Buffer: 50 Saniye
+                        2_500,  // Play Eşiği: 2.5 sn dolmadan başlatma
+                        5_000   // Donarsa 5sn dolmadan tekrar başlama
                     )
                     .setPrioritizeTimeOverSizeThresholds(true)
                     .build()
 
-                // --- 4. MEDYA KAYNAĞI OPTİMİZASYONU ---
+                // --- 4. MEDYA KAYNAĞI FABRİKASI ---
+                // Canlı yayınları 10sn geriden takip et (Buffer için zaman kazan)
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
-                    .setLiveTargetOffsetMs(5000)
+                    .setLiveTargetOffsetMs(10_000)
 
+                // --- 5. PLAYER OLUŞTURMA ---
                 player = ExoPlayer.Builder(this, renderersFactory)
                     .setMediaSourceFactory(mediaSourceFactory)
                     .setTrackSelector(trackSelector!!)
-                    .setLoadControl(loadControl)
+                    .setLoadControl(loadControl) // Özel ayarı buraya yüklüyoruz
                     .setAudioAttributes(
                         androidx.media3.common.AudioAttributes.Builder()
                             .setUsage(C.USAGE_MEDIA)
@@ -316,6 +329,7 @@ class PlayerActivity : BaseActivity() {
         parametersBuilder.setSelectUndeterminedTextLanguage(true)
         selector.parameters = parametersBuilder.build()
     }
+
     private fun smartSelectSubtitle() { val preferredLang = SettingsManager.getSubtitleLang(this); val tracks = getTracksByType(C.TRACK_TYPE_TEXT); var targetTrack = tracks.find { it.name.lowercase().contains(preferredLang) }; if (targetTrack == null) { val searchKeyword = if (preferredLang == "tr") "tur" else if (preferredLang == "ru") "rus" else preferredLang; targetTrack = tracks.find { it.name.lowercase().contains(searchKeyword) } }; if (targetTrack != null) { selectTrack(C.TRACK_TYPE_TEXT, targetTrack.groupIndex, targetTrack.trackIndex, targetTrack.rendererIndex) } }
     private fun updateNetworkSpeed() { val currentRxBytes = TrafficStats.getUidRxBytes(applicationInfo.uid); val currentTime = System.currentTimeMillis(); val timeDiff = currentTime - lastTimeStamp; if (timeDiff >= 1000) { val bytesDiff = currentRxBytes - lastTotalRxBytes; val speed = if (bytesDiff > 0) (bytesDiff * 1000) / timeDiff else 0; val speedText = if (speed >= 1024 * 1024) String.format("%.1f MB/s", speed / (1024f * 1024f)) else String.format("%d KB/s", speed / 1024); textNetworkSpeed.text = speedText; lastTotalRxBytes = currentRxBytes; lastTimeStamp = currentTime } }
     private fun checkProgress() { if (player == null || streamType == "live") return; val current = player!!.currentPosition; val duration = player!!.duration; if (streamType == "series" && current > 10000 && current < 300000) { if (btnSkipIntro.visibility != View.VISIBLE) btnSkipIntro.visibility = View.VISIBLE } else { if (btnSkipIntro.visibility == View.VISIBLE) btnSkipIntro.visibility = View.GONE }; if (nextEpisodeId != -1 && duration > 0 && (duration - current) < 45000) { if (btnNextEpisode.visibility != View.VISIBLE) btnNextEpisode.visibility = View.VISIBLE } else { if (btnNextEpisode.visibility == View.VISIBLE) btnNextEpisode.visibility = View.GONE } }
