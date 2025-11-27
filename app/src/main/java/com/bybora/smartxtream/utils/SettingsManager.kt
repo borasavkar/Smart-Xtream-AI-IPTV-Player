@@ -1,8 +1,9 @@
-package com.bybora.smartxtream.utils
+package com.bybora.smartxtream.utils // Refactor sonrası yeni paket isminiz
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.core.content.edit // <-- Bu kütüphane sayesinde 'edit { }' kullanabiliyoruz
+import androidx.core.content.edit
+import java.util.Locale // Sistem dilini çekmek için gerekli kütüphane
 
 object SettingsManager {
     private const val PREF_NAME = "BoraPlayerSettings"
@@ -17,6 +18,12 @@ object SettingsManager {
         return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
     }
 
+    // --- YARDIMCI FONKSİYON: SİSTEM DİLİNİ BUL ---
+    // Telefonun dil kodunu (örneğin "en", "tr", "de") döndürür.
+    private fun getSystemLanguage(): String {
+        return Locale.getDefault().language ?: "tr"
+    }
+
     // --- PROFİL HAFIZASI ---
     fun saveSelectedProfileId(context: Context, id: Int) {
         getPrefs(context).edit {
@@ -29,7 +36,6 @@ object SettingsManager {
     }
 
     // --- VERİ TASARRUFU (DATA SAVER) ---
-    // DÜZELTİLDİ: KTX formatına çevrildi
     fun setDataSaver(context: Context, enabled: Boolean) {
         getPrefs(context).edit {
             putBoolean(KEY_DATA_SAVER, enabled)
@@ -38,7 +44,7 @@ object SettingsManager {
 
     fun getDataSaver(context: Context): Boolean = getPrefs(context).getBoolean(KEY_DATA_SAVER, true)
 
-    // --- DİL AYARLARI ---
+    // --- DİL AYARLARI (GÜNCELLENDİ) ---
     fun setAudioLang(context: Context, langCode: String) {
         getPrefs(context).edit {
             putString(KEY_AUDIO_LANG, langCode)
@@ -51,6 +57,15 @@ object SettingsManager {
         }
     }
 
-    fun getAudioLang(context: Context): String = getPrefs(context).getString(KEY_AUDIO_LANG, "tr") ?: "tr"
-    fun getSubtitleLang(context: Context): String = getPrefs(context).getString(KEY_SUBTITLE_LANG, "tr") ?: "tr"
+    // GÜNCELLEME: Varsayılan değer olarak artık sabit "tr" değil,
+    // sistemin dili (getSystemLanguage) kullanılıyor.
+    fun getAudioLang(context: Context): String {
+        val defaultLang = getSystemLanguage()
+        return getPrefs(context).getString(KEY_AUDIO_LANG, defaultLang) ?: defaultLang
+    }
+
+    fun getSubtitleLang(context: Context): String {
+        val defaultLang = getSystemLanguage()
+        return getPrefs(context).getString(KEY_SUBTITLE_LANG, defaultLang) ?: defaultLang
+    }
 }

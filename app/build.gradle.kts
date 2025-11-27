@@ -48,6 +48,7 @@ dependencies {
     // OkHttp (İnternetten dosya indirmek için)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
+
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
