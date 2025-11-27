@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer
+package com.bybora.smartxtream
 
 import android.app.Activity
 import android.content.Context
@@ -34,11 +34,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
-import com.example.boraiptvplayer.database.AppDatabase
-import com.example.boraiptvplayer.database.Favorite
-import com.example.boraiptvplayer.database.Interaction
-import com.example.boraiptvplayer.network.RetrofitClient
-import com.example.boraiptvplayer.utils.SettingsManager
+import com.bybora.smartxtream.database.AppDatabase
+import com.bybora.smartxtream.database.Favorite
+import com.bybora.smartxtream.database.Interaction
+import com.bybora.smartxtream.utils.SettingsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer.database
+package com.bybora.smartxtream.database
 
 data class CategoryScore(
     val categoryId: String,

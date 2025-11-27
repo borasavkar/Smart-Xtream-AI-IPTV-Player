@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer.adapter
+package com.bybora.smartxtream.adapter
 
 import android.graphics.Color
 import android.view.LayoutInflater
@@ -8,9 +8,9 @@ import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.boraiptvplayer.R
-import com.example.boraiptvplayer.database.Interaction
-import com.example.boraiptvplayer.network.Episode
+import com.bybora.smartxtream.R
+import com.bybora.smartxtream.database.Interaction
+import com.bybora.smartxtream.network.Episode
 
 interface OnEpisodeClickListener {
     fun onEpisodeClick(episode: Episode)

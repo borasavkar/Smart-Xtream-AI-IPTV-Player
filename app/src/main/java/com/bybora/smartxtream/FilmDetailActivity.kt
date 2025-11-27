@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer
+package com.bybora.smartxtream
 
 import android.content.Intent
 import android.net.Uri
@@ -12,10 +12,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
-import com.example.boraiptvplayer.database.AppDatabase
-import com.example.boraiptvplayer.database.Favorite
-import com.example.boraiptvplayer.network.RetrofitClient
-import com.example.boraiptvplayer.network.VodInfoData
+import com.bybora.smartxtream.database.AppDatabase
+import com.bybora.smartxtream.database.Favorite
+import com.bybora.smartxtream.network.RetrofitClient
+import com.bybora.smartxtream.network.VodInfoData
 import kotlinx.coroutines.launch
 
 class FilmDetailActivity : BaseActivity() {

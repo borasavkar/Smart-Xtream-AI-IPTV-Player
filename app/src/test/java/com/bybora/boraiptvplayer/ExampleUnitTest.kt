@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer
+package com.bybora.smartxtream
 
 import org.junit.Test
 

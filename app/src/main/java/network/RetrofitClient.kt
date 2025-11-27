@@ -1,9 +1,7 @@
-package com.example.boraiptvplayer.network
+package com.bybora.smartxtream.network
 
-import android.content.Context
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import okhttp3.Cache
 import okhttp3.ConnectionPool
 import okhttp3.Dispatcher
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -12,7 +10,6 @@ import okhttp3.Protocol
 import okhttp3.dnsoverhttps.DnsOverHttps
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
-import java.io.File
 import java.net.InetAddress
 import java.util.concurrent.TimeUnit
 

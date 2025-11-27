@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer.network
+package com.bybora.smartxtream.network
 
 import com.squareup.moshi.Json
 

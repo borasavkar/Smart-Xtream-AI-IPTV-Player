@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer.adapter
+package com.bybora.smartxtream.adapter
 
 import android.os.Build
 import android.view.LayoutInflater
@@ -11,10 +11,9 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.request.RequestOptions
-import com.example.boraiptvplayer.R
-import com.example.boraiptvplayer.network.ChannelWithEpg
+import com.bybora.smartxtream.R
+import com.bybora.smartxtream.network.ChannelWithEpg
 import java.util.Base64
 
 interface OnChannelClickListener {

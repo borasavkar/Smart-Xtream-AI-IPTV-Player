@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer.adapter
+package com.bybora.smartxtream.adapter
 
 import android.view.LayoutInflater
 import android.view.View
@@ -9,8 +9,8 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.example.boraiptvplayer.R
-import com.example.boraiptvplayer.network.SeriesStream //
+import com.bybora.smartxtream.R
+import com.bybora.smartxtream.network.SeriesStream //
 
 interface OnSeriesClickListener {
     fun onSeriesClick(series: SeriesStream)

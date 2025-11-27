@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer.adapter
+package com.bybora.smartxtream.adapter
 
 import android.view.LayoutInflater
 import android.view.View
@@ -7,8 +7,8 @@ import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.boraiptvplayer.R
-import com.example.boraiptvplayer.network.LiveCategory
+import com.bybora.smartxtream.R
+import com.bybora.smartxtream.network.LiveCategory
 
 interface OnCategoryClickListener {
     fun onCategoryClick(category: LiveCategory)

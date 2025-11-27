@@ -14,7 +14,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.BoraIPTVPlayer"
+        android:theme="@style/Theme.smartxtream"
         android:usesCleartextTraffic="true"
         android:largeHeap="true"
         android:banner="@drawable/tv_banner">

@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer
+package com.bybora.smartxtream
 
 import android.content.Intent
 import android.os.Bundle
@@ -9,16 +9,16 @@ import android.widget.Toast
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
-import com.example.boraiptvplayer.adapter.ChannelAdapter
-import com.example.boraiptvplayer.adapter.LiveCategoryAdapter
-import com.example.boraiptvplayer.adapter.OnCategoryClickListener
-import com.example.boraiptvplayer.adapter.OnChannelClickListener
-import com.example.boraiptvplayer.network.ChannelWithEpg
-import com.example.boraiptvplayer.network.EpgListing
-import com.example.boraiptvplayer.network.LiveCategory
-import com.example.boraiptvplayer.network.LiveStream
-import com.example.boraiptvplayer.network.RetrofitClient
-import com.example.boraiptvplayer.utils.M3UParser
+import com.bybora.smartxtream.adapter.ChannelAdapter
+import com.bybora.smartxtream.adapter.LiveCategoryAdapter
+import com.bybora.smartxtream.adapter.OnCategoryClickListener
+import com.bybora.smartxtream.adapter.OnChannelClickListener
+import com.bybora.smartxtream.network.ChannelWithEpg
+import com.bybora.smartxtream.network.EpgListing
+import com.bybora.smartxtream.network.LiveCategory
+import com.bybora.smartxtream.network.LiveStream
+import com.bybora.smartxtream.network.RetrofitClient
+import com.bybora.smartxtream.utils.M3UParser
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.*

@@ -1,8 +1,7 @@
-package com.example.boraiptvplayer
+package com.bybora.smartxtream
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.ProgressBar
@@ -10,36 +9,36 @@ import android.widget.Toast
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
-import com.example.boraiptvplayer.adapter.LiveCategoryAdapter
-import com.example.boraiptvplayer.adapter.OnCategoryClickListener
-import com.example.boraiptvplayer.adapter.OnSeriesClickListener
-import com.example.boraiptvplayer.adapter.SeriesAdapter
-import com.example.boraiptvplayer.network.LiveCategory
-import com.example.boraiptvplayer.network.RetrofitClient
-import com.example.boraiptvplayer.network.SeriesStream
+import com.bybora.smartxtream.adapter.FilmAdapter
+import com.bybora.smartxtream.adapter.LiveCategoryAdapter
+import com.bybora.smartxtream.adapter.OnCategoryClickListener
+import com.bybora.smartxtream.adapter.OnFilmClickListener
+import com.bybora.smartxtream.network.LiveCategory
+import com.bybora.smartxtream.network.RetrofitClient
+import com.bybora.smartxtream.network.VodStream
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.*
 import java.util.Locale
 
-class SeriesListActivity : BaseActivity(), OnCategoryClickListener, OnSeriesClickListener {
+class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListener {
 
     private lateinit var layoutSearchCategory: TextInputLayout
     private lateinit var inputSearchCategory: TextInputEditText
-    private lateinit var layoutSearchSeries: TextInputLayout
-    private lateinit var inputSearchSeries: TextInputEditText
+    private lateinit var layoutSearchFilm: TextInputLayout
+    private lateinit var inputSearchFilm: TextInputEditText
     private lateinit var recyclerCategories: RecyclerView
-    private lateinit var recyclerSeries: RecyclerView
+    private lateinit var recyclerFilms: RecyclerView
     private lateinit var progressBar: ProgressBar
 
     private lateinit var categoryAdapter: LiveCategoryAdapter
-    private lateinit var seriesAdapter: SeriesAdapter
+    private lateinit var filmAdapter: FilmAdapter
 
     private var allCategories: List<LiveCategory> = emptyList()
-    private var allSeries: List<SeriesStream> = emptyList()
+    private var allFilms: List<VodStream> = emptyList()
     private var selectedCategoryId: String? = null
     private var categorySearchJob: Job? = null
-    private var seriesSearchJob: Job? = null
+    private var filmSearchJob: Job? = null
 
     private var serverUrl: String? = null
     private var username: String? = null
@@ -47,15 +46,13 @@ class SeriesListActivity : BaseActivity(), OnCategoryClickListener, OnSeriesClic
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_series_list)
-
+        setContentView(R.layout.activity_films)
         initViews()
         if (!getIntentData()) {
-            Toast.makeText(this, getString(R.string.status_login_error), Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Profil hatası", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
-
         setupAdapters()
         setupSearchListeners()
         fetchAllData()
@@ -65,10 +62,10 @@ class SeriesListActivity : BaseActivity(), OnCategoryClickListener, OnSeriesClic
         findViewById<View>(R.id.btn_back).setOnClickListener { finish() }
         layoutSearchCategory = findViewById(R.id.layout_search_category)
         inputSearchCategory = findViewById(R.id.input_search_category)
-        layoutSearchSeries = findViewById(R.id.layout_search_series)
-        inputSearchSeries = findViewById(R.id.input_search_series)
+        layoutSearchFilm = findViewById(R.id.layout_search_film)
+        inputSearchFilm = findViewById(R.id.input_search_film)
         recyclerCategories = findViewById(R.id.recycler_categories)
-        recyclerSeries = findViewById(R.id.recycler_series)
+        recyclerFilms = findViewById(R.id.recycler_films)
         progressBar = findViewById(R.id.progress_bar_loading)
     }
 
@@ -82,8 +79,8 @@ class SeriesListActivity : BaseActivity(), OnCategoryClickListener, OnSeriesClic
     private fun setupAdapters() {
         categoryAdapter = LiveCategoryAdapter(this)
         recyclerCategories.adapter = categoryAdapter
-        seriesAdapter = SeriesAdapter(this)
-        recyclerSeries.adapter = seriesAdapter
+        filmAdapter = FilmAdapter(this)
+        recyclerFilms.adapter = filmAdapter
     }
 
     private fun fetchAllData() {
@@ -92,57 +89,60 @@ class SeriesListActivity : BaseActivity(), OnCategoryClickListener, OnSeriesClic
 
         lifecycleScope.launch {
             try {
-                // Dizileri Çek
-                val catDef = async { apiService.getSeriesCategories(username!!, password!!) }
-                val serDef = async { apiService.getSeries(username!!, password!!) }
+                // SADECE XTREAM KOMUTLARI (Temiz ve Güvenli)
+                val catDeferred = async { apiService.getVodCategories(username!!, password!!) }
+                val vodDeferred = async { apiService.getVodStreams(username!!, password!!) }
 
-                val catRes = catDef.await()
-                val serRes = serDef.await()
+                val catResponse = catDeferred.await()
+                val vodResponse = vodDeferred.await()
 
-                if (catRes.isSuccessful && serRes.isSuccessful) {
-                    val rawCats = catRes.body() ?: emptyList()
-                    // LiveCategory dönüşümü (Güvenlik için)
-                    allCategories = rawCats.map { LiveCategory(it.categoryId, it.categoryName, 0) }
-                    allSeries = serRes.body() ?: emptyList()
+                if (catResponse.isSuccessful && vodResponse.isSuccessful) {
+                    // VodCategory -> LiveCategory dönüşümü (Güvenlik için)
+                    val rawCats = catResponse.body() ?: emptyList()
+                    allCategories = rawCats.map {
+                        LiveCategory(it.categoryId, it.categoryName, 0)
+                    }
+                    allFilms = vodResponse.body() ?: emptyList()
 
                     // Sayımları Hesapla
                     withContext(Dispatchers.IO) {
                         val counts = HashMap<String, Int>()
-                        val allCat = LiveCategory("0", "Tüm Diziler", 0)
+                        val allCat = LiveCategory("0", "Tüm Filmler", 0)
                         val mutableCats = mutableListOf(allCat)
                         mutableCats.addAll(allCategories)
                         allCategories = mutableCats
 
-                        counts["0"] = allSeries.size
-                        allSeries.forEach { s ->
-                            val cId = s.categoryId ?: "0"
+                        counts["0"] = allFilms.size
+                        allFilms.forEach { f ->
+                            val cId = f.categoryId ?: "0"
                             counts[cId] = (counts[cId] ?: 0) + 1
                         }
 
                         withContext(Dispatchers.Main) {
                             categoryAdapter.submitList(allCategories)
                             categoryAdapter.setChannelCounts(counts)
-                            seriesAdapter.submitList(allSeries)
+                            filmAdapter.submitList(allFilms)
                         }
                     }
                     progressBar.visibility = View.GONE
                 } else {
-                    showError(getString(R.string.error_not_found))
+                    showError("Veri alınamadı.")
                 }
             } catch (e: Exception) {
-                showError(getString(R.string.status_server_error))
+                showError("Sunucu hatası.")
             }
         }
     }
 
+    // --- ARAMA İŞLEMLERİ ---
     private fun setupSearchListeners() {
         inputSearchCategory.addTextChangedListener { performCategorySearch(it.toString(), true) }
         layoutSearchCategory.setEndIconOnClickListener { performCategorySearch(inputSearchCategory.text.toString(), false) }
         inputSearchCategory.setOnEditorActionListener { _, id, _ -> if (id == EditorInfo.IME_ACTION_SEARCH) { performCategorySearch(inputSearchCategory.text.toString(), false); true } else false }
 
-        inputSearchSeries.addTextChangedListener { performSeriesSearch(it.toString(), true) }
-        layoutSearchSeries.setEndIconOnClickListener { performSeriesSearch(inputSearchSeries.text.toString(), false) }
-        inputSearchSeries.setOnEditorActionListener { _, id, _ -> if (id == EditorInfo.IME_ACTION_SEARCH) { performSeriesSearch(inputSearchSeries.text.toString(), false); true } else false }
+        inputSearchFilm.addTextChangedListener { performFilmSearch(it.toString(), true) }
+        layoutSearchFilm.setEndIconOnClickListener { performFilmSearch(inputSearchFilm.text.toString(), false) }
+        inputSearchFilm.setOnEditorActionListener { _, id, _ -> if (id == EditorInfo.IME_ACTION_SEARCH) { performFilmSearch(inputSearchFilm.text.toString(), false); true } else false }
     }
 
     private fun performCategorySearch(txt: String, isAuto: Boolean) {
@@ -155,41 +155,42 @@ class SeriesListActivity : BaseActivity(), OnCategoryClickListener, OnSeriesClic
         }
     }
 
-    private fun performSeriesSearch(txt: String, isAuto: Boolean) {
-        seriesSearchJob?.cancel()
-        seriesSearchJob = lifecycleScope.launch {
+    private fun performFilmSearch(txt: String, isAuto: Boolean) {
+        filmSearchJob?.cancel()
+        filmSearchJob = lifecycleScope.launch {
             if (isAuto) delay(500)
             val q = txt.lowercase(Locale("tr"))
             val res = withContext(Dispatchers.IO) {
-                if (q.isNotEmpty()) allSeries.filter { it.name?.lowercase(Locale("tr"))?.contains(q) == true }
-                else if (selectedCategoryId != null && selectedCategoryId != "0") allSeries.filter { it.categoryId == selectedCategoryId }
-                else allSeries
+                if (q.isNotEmpty()) allFilms.filter { it.name?.lowercase(Locale("tr"))?.contains(q) == true }
+                else if (selectedCategoryId != null && selectedCategoryId != "0") allFilms.filter { it.categoryId == selectedCategoryId }
+                else allFilms
             }
-            seriesAdapter.submitList(res)
+            filmAdapter.submitList(res)
         }
     }
 
+    // --- TIKLAMALAR ---
     override fun onCategoryClick(c: LiveCategory) {
         selectedCategoryId = c.categoryId
-        inputSearchSeries.text?.clear()
+        inputSearchFilm.text?.clear()
         lifecycleScope.launch(Dispatchers.IO) {
-            val res = if (c.categoryId == "0") allSeries else allSeries.filter { it.categoryId == c.categoryId }
-            withContext(Dispatchers.Main) { seriesAdapter.submitList(res) }
+            val res = if (c.categoryId == "0") allFilms else allFilms.filter { it.categoryId == c.categoryId }
+            withContext(Dispatchers.Main) { filmAdapter.submitList(res) }
         }
     }
 
-    override fun onSeriesClick(s: SeriesStream) {
-        val intent = Intent(this, SeriesDetailActivity::class.java).apply {
+    override fun onFilmClick(f: VodStream) {
+        // Detay sayfasına git (Sadece Xtream olduğu için güvenli)
+        val intent = Intent(this, FilmDetailActivity::class.java).apply {
             putExtra("EXTRA_SERVER_URL", serverUrl)
             putExtra("EXTRA_USERNAME", username)
             putExtra("EXTRA_PASSWORD", password)
-            putExtra("EXTRA_SERIES_ID", s.seriesId)
+            putExtra("EXTRA_STREAM_ID", f.streamId)
+            putExtra("EXTRA_STREAM_TYPE", "vod")
+            putExtra("EXTRA_EXTENSION", f.fileExtension)
         }
         startActivity(intent)
     }
 
-    private fun showError(msg: String) {
-        progressBar.visibility = View.GONE
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-    }
+    private fun showError(msg: String) { progressBar.visibility = View.GONE; Toast.makeText(this, msg, Toast.LENGTH_SHORT).show() }
 }

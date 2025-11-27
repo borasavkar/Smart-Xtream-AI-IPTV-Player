@@ -1,7 +1,7 @@
-package com.example.boraiptvplayer.utils
+package com.bybora.smartxtream.utils
 
-import com.example.boraiptvplayer.network.LiveCategory
-import com.example.boraiptvplayer.network.LiveStream
+import com.bybora.smartxtream.network.LiveCategory
+import com.bybora.smartxtream.network.LiveStream
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.BufferedReader

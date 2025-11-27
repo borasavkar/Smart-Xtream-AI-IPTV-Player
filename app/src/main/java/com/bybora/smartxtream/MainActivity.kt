@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer
+package com.bybora.smartxtream
 
 import android.content.Intent
 import android.os.Bundle
@@ -13,19 +13,19 @@ import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.boraiptvplayer.adapter.ChannelAdapter
-import com.example.boraiptvplayer.adapter.OnChannelClickListener
-import com.example.boraiptvplayer.database.AppDatabase
-import com.example.boraiptvplayer.database.Profile
-import com.example.boraiptvplayer.network.ChannelWithEpg
-import com.example.boraiptvplayer.network.EpgListing
-import com.example.boraiptvplayer.network.LiveStream
-import com.example.boraiptvplayer.network.RetrofitClient
-import com.example.boraiptvplayer.network.VodStream
-import com.example.boraiptvplayer.utils.BillingManager
-import com.example.boraiptvplayer.utils.ContentCache
-import com.example.boraiptvplayer.utils.M3UParser
-import com.example.boraiptvplayer.utils.SettingsManager
+import com.bybora.smartxtream.adapter.ChannelAdapter
+import com.bybora.smartxtream.adapter.OnChannelClickListener
+import com.bybora.smartxtream.database.AppDatabase
+import com.bybora.smartxtream.database.Profile
+import com.bybora.smartxtream.network.ChannelWithEpg
+import com.bybora.smartxtream.network.EpgListing
+import com.bybora.smartxtream.network.LiveStream
+import com.bybora.smartxtream.network.RetrofitClient
+import com.bybora.smartxtream.network.VodStream
+import com.bybora.smartxtream.utils.BillingManager
+import com.bybora.smartxtream.utils.ContentCache
+import com.bybora.smartxtream.utils.M3UParser
+import com.bybora.smartxtream.utils.SettingsManager
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -352,7 +352,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                 val (channels, movies, series, epgList) = withContext(Dispatchers.IO) {
                     var ch: List<LiveStream>
                     var mv: List<VodStream>
-                    var sr: List<com.example.boraiptvplayer.network.SeriesStream>
+                    var sr: List<com.bybora.smartxtream.network.SeriesStream>
                     var ep: List<EpgListing>?
 
                     if (ContentCache.hasDataFor(profile.id)) {
@@ -429,7 +429,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     ).take(10)
 
                     val newSeries = safeSeries.sortedWith(
-                        compareByDescending<com.example.boraiptvplayer.network.SeriesStream> { getYearFromName(it.name) }
+                        compareByDescending<com.bybora.smartxtream.network.SeriesStream> { getYearFromName(it.name) }
                             .thenByDescending { it.seriesId }
                     ).take(5)
 

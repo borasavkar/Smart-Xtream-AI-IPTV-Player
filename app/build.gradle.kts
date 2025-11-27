@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.boraiptvplayer"
+    namespace = "com.bybora.smartxtream"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.boraiptvplayer"
+        applicationId = "com.bybora.smartxtream"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

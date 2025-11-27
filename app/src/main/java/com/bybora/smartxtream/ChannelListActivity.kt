@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer
+package com.bybora.smartxtream
 
 import android.content.Intent
 import android.os.Bundle
@@ -8,13 +8,13 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
-import com.example.boraiptvplayer.adapter.ChannelAdapter
-import com.example.boraiptvplayer.adapter.OnChannelClickListener
-import com.example.boraiptvplayer.network.ApiService
-import com.example.boraiptvplayer.network.ChannelWithEpg
-import com.example.boraiptvplayer.network.EpgListing
-import com.example.boraiptvplayer.network.LiveStream
-import com.example.boraiptvplayer.network.RetrofitClient
+import com.bybora.smartxtream.adapter.ChannelAdapter
+import com.bybora.smartxtream.adapter.OnChannelClickListener
+import com.bybora.smartxtream.network.ApiService
+import com.bybora.smartxtream.network.ChannelWithEpg
+import com.bybora.smartxtream.network.EpgListing
+import com.bybora.smartxtream.network.LiveStream
+import com.bybora.smartxtream.network.RetrofitClient
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat

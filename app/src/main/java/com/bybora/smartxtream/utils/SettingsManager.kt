@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer.utils
+package com.bybora.smartxtream.utils
 
 import android.content.Context
 import android.content.SharedPreferences

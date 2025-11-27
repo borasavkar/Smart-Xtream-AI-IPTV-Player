@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer
+package com.bybora.smartxtream
 
 import android.content.Intent
 import android.os.Bundle
@@ -6,13 +6,12 @@ import android.view.View
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.boraiptvplayer.adapter.ChannelAdapter
-import com.example.boraiptvplayer.adapter.OnChannelClickListener
-import com.example.boraiptvplayer.database.AppDatabase
-import com.example.boraiptvplayer.database.Profile
-import com.example.boraiptvplayer.network.ChannelWithEpg
-import com.example.boraiptvplayer.network.EpgListing
-import com.example.boraiptvplayer.network.LiveStream
+import com.bybora.smartxtream.adapter.ChannelAdapter
+import com.bybora.smartxtream.adapter.OnChannelClickListener
+import com.bybora.smartxtream.database.AppDatabase
+import com.bybora.smartxtream.network.ChannelWithEpg
+import com.bybora.smartxtream.network.EpgListing
+import com.bybora.smartxtream.network.LiveStream
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 

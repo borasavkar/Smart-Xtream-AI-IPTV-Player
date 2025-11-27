@@ -1,9 +1,9 @@
-package com.example.boraiptvplayer.utils
+package com.bybora.smartxtream.utils
 
-import com.example.boraiptvplayer.network.EpgListing
-import com.example.boraiptvplayer.network.LiveStream
-import com.example.boraiptvplayer.network.SeriesStream
-import com.example.boraiptvplayer.network.VodStream
+import com.bybora.smartxtream.network.EpgListing
+import com.bybora.smartxtream.network.LiveStream
+import com.bybora.smartxtream.network.SeriesStream
+import com.bybora.smartxtream.network.VodStream
 
 object ContentCache {
     private var lastProfileId: Int = -1

@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer.database
+package com.bybora.smartxtream.database
 
 import androidx.room.Dao
 import androidx.room.Insert

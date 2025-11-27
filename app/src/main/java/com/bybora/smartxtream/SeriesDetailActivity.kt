@@ -1,8 +1,7 @@
-package com.example.boraiptvplayer
+package com.bybora.smartxtream
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -13,13 +12,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.example.boraiptvplayer.adapter.EpisodeAdapter
-import com.example.boraiptvplayer.adapter.OnEpisodeClickListener
-import com.example.boraiptvplayer.database.AppDatabase
-import com.example.boraiptvplayer.database.Favorite
-import com.example.boraiptvplayer.network.ApiService
-import com.example.boraiptvplayer.network.Episode
-import com.example.boraiptvplayer.network.RetrofitClient
+import com.bybora.smartxtream.adapter.EpisodeAdapter
+import com.bybora.smartxtream.adapter.OnEpisodeClickListener
+import com.bybora.smartxtream.database.AppDatabase
+import com.bybora.smartxtream.database.Favorite
+import com.bybora.smartxtream.network.ApiService
+import com.bybora.smartxtream.network.Episode
+import com.bybora.smartxtream.network.RetrofitClient
 import kotlinx.coroutines.launch
 
 class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {

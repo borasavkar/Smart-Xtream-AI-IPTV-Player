@@ -1,4 +1,4 @@
-package com.example.boraiptvplayer
+package com.bybora.smartxtream
 
 import android.os.Bundle
 import android.util.Log
@@ -7,10 +7,10 @@ import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
-import com.example.boraiptvplayer.database.AppDatabase
-import com.example.boraiptvplayer.database.Profile
-import com.example.boraiptvplayer.network.RetrofitClient
-import com.example.boraiptvplayer.utils.SettingsManager // <-- Önemli
+import com.bybora.smartxtream.database.AppDatabase
+import com.bybora.smartxtream.database.Profile
+import com.bybora.smartxtream.network.RetrofitClient
+import com.bybora.smartxtream.utils.SettingsManager // <-- Önemli
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
