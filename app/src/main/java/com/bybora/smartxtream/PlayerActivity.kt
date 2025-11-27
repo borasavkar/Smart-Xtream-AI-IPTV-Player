@@ -111,14 +111,22 @@ class PlayerActivity : BaseActivity() {
         lastTimeStamp = System.currentTimeMillis()
 
         initViews()
+
+        // getIntentData() çağırdıktan hemen sonra kontrol ediyoruz:
         if (getIntentData()) {
+
+            // --- EKLEMENİZ GEREKEN KOD BURASI ---
+            if (streamType == "series") {
+                btnFavoritePlayer.visibility = View.GONE
+            }
+            // ------------------------------------
+
             checkResumeStatus()
             checkFavoriteStatus()
         } else {
             finish()
         }
     }
-
     private fun initViews() {
         playerView = findViewById(R.id.player_view)
         try { topControls = findViewById(R.id.top_controls) } catch (e: Exception) {}
@@ -137,15 +145,35 @@ class PlayerActivity : BaseActivity() {
         btnNextEpisode.setOnClickListener { playNextEpisode() }
         btnSkipIntro.setOnClickListener { skipIntro() }
 
+        // --- DÜZELTME BURADA BAŞLIYOR ---
         playerView?.setControllerVisibilityListener(object : PlayerView.ControllerVisibilityListener {
             override fun onVisibilityChanged(visibility: Int) {
+                // 1. Standart kontrolleri yönet
                 topControls?.visibility = visibility
                 btnBack.visibility = visibility
                 textNetworkSpeed.visibility = visibility
+
                 if (topControls == null) {
                     btnSettings.visibility = visibility
                     btnSubtitle.visibility = visibility
-                    btnFavoritePlayer.visibility = visibility
+                }
+
+                // 2. FAVORİ BUTONU KONTROLÜ (KESİN ÇÖZÜM)
+                if (streamType == "series") {
+                    // Eğer Dizi ise: Butonu ASLA gösterme (Gone yap)
+                    btnFavoritePlayer.visibility = View.GONE
+                } else {
+                    // Eğer Dizi Değilse (Canlı/Film):
+                    if (topControls == null) {
+                        // Top controls yoksa manuel yönet
+                        btnFavoritePlayer.visibility = visibility
+                    } else {
+                        // Top controls varsa, buton onun içindeyse onunla gelir.
+                        // Ama buton dışarıdaysa ve görünmesi gerekiyorsa burada açabiliriz.
+                        // Garanti olsun diye: Görünürlük 0 (VISIBLE) ise göster.
+                        if (visibility == View.VISIBLE) btnFavoritePlayer.visibility = View.VISIBLE
+                        else btnFavoritePlayer.visibility = View.GONE
+                    }
                 }
             }
         })
@@ -334,7 +362,15 @@ class PlayerActivity : BaseActivity() {
     private fun checkProgress() { if (player == null || streamType == "live") return; val current = player!!.currentPosition; val duration = player!!.duration; if (streamType == "series" && current > 10000 && current < 300000) { if (btnSkipIntro.visibility != View.VISIBLE) btnSkipIntro.visibility = View.VISIBLE } else { if (btnSkipIntro.visibility == View.VISIBLE) btnSkipIntro.visibility = View.GONE }; if (nextEpisodeId != -1 && duration > 0 && (duration - current) < 45000) { if (btnNextEpisode.visibility != View.VISIBLE) btnNextEpisode.visibility = View.VISIBLE } else { if (btnNextEpisode.visibility == View.VISIBLE) btnNextEpisode.visibility = View.GONE } }
     private fun skipIntro() { player?.let { it.seekTo(it.currentPosition + 85000); Toast.makeText(this, "İntro atlandı", Toast.LENGTH_SHORT).show() } }
     private fun playNextEpisode() { saveProgress(); val intent = Intent(this, PlayerActivity::class.java).apply { putExtra("EXTRA_SERVER_URL", serverUrl); putExtra("EXTRA_USERNAME", username); putExtra("EXTRA_PASSWORD", password); putExtra("EXTRA_STREAM_ID", nextEpisodeId); putExtra("EXTRA_STREAM_TYPE", streamType); putExtra("EXTRA_EXTENSION", fileExtension); putExtra("EXTRA_CATEGORY_ID", categoryId) }; startActivity(intent); finish() }
-    private fun checkFavoriteStatus() { lifecycleScope.launch { isFav = db.favoriteDao().isFavorite(streamId, streamType ?: "live"); updateFavIcon() } }
+    private fun checkFavoriteStatus() {
+        // Dizi ise favori kontrolü yapma, butonu zaten gizledik
+        if (streamType == "series") return
+
+        lifecycleScope.launch {
+            isFav = db.favoriteDao().isFavorite(streamId, streamType ?: "live")
+            updateFavIcon()
+        }
+    }
     private fun toggleFavorite() { lifecycleScope.launch { if (isFav) { db.favoriteDao().removeFavorite(streamId, streamType ?: "live"); isFav = false; Toast.makeText(this@PlayerActivity, "Favorilerden çıkarıldı", Toast.LENGTH_SHORT).show() } else { val fav = Favorite(streamId = streamId, streamType = streamType ?: "live", name = streamName, image = streamIcon, categoryId = categoryId); db.favoriteDao().addFavorite(fav); isFav = true; Toast.makeText(this@PlayerActivity, "Favorilere eklendi", Toast.LENGTH_SHORT).show() }; updateFavIcon() } }
     private fun updateFavIcon() { val icon = if (isFav) R.drawable.ic_heart_filled else R.drawable.ic_heart_outline; btnFavoritePlayer.setImageResource(icon) }
     private fun handlePlayerError(error: PlaybackException) { val title: String; val msg: String; val cause = error.cause; if (cause is HttpDataSource.InvalidResponseCodeException) { title = "Sunucu Hatası (${cause.responseCode})"; msg = when(cause.responseCode){404->"Kaynak bulunamadı.";403->"Erişim reddedildi.";else->"Sunucu hatası."} } else if (error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED) { title = "İnternet Yok"; msg = "Bağlantı hatası." } else { title = "Hata"; msg = error.message ?: "" }; showDetailedErrorDialog(title, msg) }
@@ -343,11 +379,56 @@ class PlayerActivity : BaseActivity() {
     private fun showSubtitleDialog() { val tracks = getTracksByType(C.TRACK_TYPE_TEXT); val items = tracks.map { it.name }.toMutableList(); items.add(0, "Kapat"); items.add("📂 Dosyadan Yükle..."); items.add(getString(R.string.search_subtitle_online)); AlertDialog.Builder(this).setTitle("Altyazı Seç").setItems(items.toTypedArray()) { _, w -> when(w) { 0 -> disableTrack(C.TRACK_TYPE_TEXT); items.size-2 -> openFilePicker(); items.size-1 -> searchSubtitleOnline(); else -> { val t = tracks[w-1]; selectTrack(C.TRACK_TYPE_TEXT, t.groupIndex, t.trackIndex, t.rendererIndex) } } }.show() }
     private fun searchSubtitleOnline() { val query = streamName; val lang = SettingsManager.getSubtitleLang(this); val langName = if (lang == "tr") "Turkish" else if (lang == "ru") "Russian" else "English"; val url = "https://www.google.com/search?q=$query+$langName+subtitle+srt"; val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)); startActivity(intent) }
     private fun getTracksByType(type: Int): List<TrackInfo> { val list = mutableListOf<TrackInfo>(); val info = trackSelector?.currentMappedTrackInfo ?: return emptyList(); for (i in 0 until info.rendererCount) { if (info.getRendererType(i) == type) { val groups = info.getTrackGroups(i); for (j in 0 until groups.length) { val group = groups[j]; for (k in 0 until group.length) { if (info.getTrackSupport(i, j, k) == C.FORMAT_HANDLED) { val f = group.getFormat(k); val name = when(type) { C.TRACK_TYPE_VIDEO -> "${f.width}x${f.height}"; C.TRACK_TYPE_AUDIO -> "${f.language ?: "und"}"; C.TRACK_TYPE_TEXT -> "${f.language ?: "und"} (${f.label ?: "Bilinmeyen"})"; else -> "?" }; list.add(TrackInfo(name, j, k, i)) } } } } }; return list }
-    private fun showTrackSelectionDialog(type: Int, title: String) { val tracks = getTracksByType(type); if (tracks.isEmpty()) { Toast.makeText(this, "Seçenek yok", 0).show(); return }; val items = tracks.map { it.name }.toTypedArray(); AlertDialog.Builder(this).setTitle(title).setItems(items) { _, w -> val t = tracks[w]; selectTrack(type, t.groupIndex, t.trackIndex, t.rendererIndex) }.show() }
-    private fun selectTrack(type: Int, g: Int, t: Int, r: Int?) { val info = trackSelector?.currentMappedTrackInfo ?: return; val rIdx = r ?: (0 until info.rendererCount).find { info.getRendererType(it) == type } ?: return; val override = TrackSelectionOverride(info.getTrackGroups(rIdx)[g], t); trackSelector?.parameters = trackSelector!!.buildUponParameters().setOverrideForType(override).build(); Toast.makeText(this, "Seçildi", 0).show() }
-    private fun disableTrack(type: Int) { trackSelector?.parameters = trackSelector!!.buildUponParameters().setTrackTypeDisabled(type, true).build(); Toast.makeText(this, "Kapatıldı", 0).show() }
+    private fun showTrackSelectionDialog(type: Int, title: String) {
+        val tracks = getTracksByType(type)
+        if (tracks.isEmpty()) {
+            // Düzeltme: '0' yerine 'Toast.LENGTH_SHORT' yazıldı
+            Toast.makeText(this, "Seçenek yok", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val items = tracks.map { it.name }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setItems(items) { _, w ->
+                val t = tracks[w]
+                selectTrack(type, t.groupIndex, t.trackIndex, t.rendererIndex)
+            }
+            .show()
+    }
+    private fun selectTrack(type: Int, g: Int, t: Int, r: Int?) {
+        val info = trackSelector?.currentMappedTrackInfo ?: return
+        val rIdx = r ?: (0 until info.rendererCount).find { info.getRendererType(it) == type } ?: return
+        val override = TrackSelectionOverride(info.getTrackGroups(rIdx)[g], t)
+        trackSelector?.parameters = trackSelector!!.buildUponParameters().setOverrideForType(override).build()
+
+        // Düzeltme: '0' -> 'Toast.LENGTH_SHORT'
+        Toast.makeText(this, "Seçildi", Toast.LENGTH_SHORT).show()
+    }
+    private fun disableTrack(type: Int) {
+        trackSelector?.parameters = trackSelector!!.buildUponParameters().setTrackTypeDisabled(type, true).build()
+
+        // Düzeltme: '0' -> 'Toast.LENGTH_SHORT'
+        Toast.makeText(this, "Kapatıldı", Toast.LENGTH_SHORT).show()
+    }
     private fun openFilePicker() { val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "*/*" }; subtitlePickerLauncher.launch(i) }
-    private fun addExternalSubtitle(uri: Uri) { if(player==null) return; val media = player?.currentMediaItem ?: return; val sub = MediaItem.SubtitleConfiguration.Builder(uri).setMimeType(MimeTypes.APPLICATION_SUBRIP).setLanguage("tr").setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build(); val newMedia = media.buildUpon().setSubtitleConfigurations(listOf(sub)).build(); val pos = player?.currentPosition ?: 0; player?.setMediaItem(newMedia); player?.seekTo(pos); player?.prepare(); player?.play(); Toast.makeText(this, "Yüklendi", 0).show() }
+    private fun addExternalSubtitle(uri: Uri) {
+        if(player==null) return
+        val media = player?.currentMediaItem ?: return
+        val sub = MediaItem.SubtitleConfiguration.Builder(uri)
+            .setMimeType(MimeTypes.APPLICATION_SUBRIP)
+            .setLanguage("tr")
+            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+            .build()
+        val newMedia = media.buildUpon().setSubtitleConfigurations(listOf(sub)).build()
+        val pos = player?.currentPosition ?: 0
+        player?.setMediaItem(newMedia)
+        player?.seekTo(pos)
+        player?.prepare()
+        player?.play()
+
+        // Düzeltme: '0' -> 'Toast.LENGTH_SHORT'
+        Toast.makeText(this, "Yüklendi", Toast.LENGTH_SHORT).show()
+    }
     data class TrackInfo(val name: String, val groupIndex: Int, val trackIndex: Int, val rendererIndex: Int)
     private fun saveProgress() { if(player==null || streamType=="live") return; val pos = player!!.currentPosition; val dur = player!!.duration; val watched = (System.currentTimeMillis() - startTime)/1000; val finished = (dur>0) && (pos >= (dur*0.95)); lifecycleScope.launch(Dispatchers.IO) { val db = AppDatabase.getInstance(applicationContext); val exist = db.interactionDao().getInteraction(streamId, streamType!!); val total = (exist?.durationSeconds ?: 0) + watched; val interact = Interaction(id = exist?.id ?: 0, streamId = streamId, streamType = streamType!!, categoryId = categoryId ?: "0", durationSeconds = total, lastPosition = if(finished) 0 else pos, maxDuration = dur, isFinished = finished); db.interactionDao().logInteraction(interact) } }
     override fun onStop() { super.onStop(); handler.removeCallbacks(progressRunnable); saveProgress(); player?.release(); player = null }
