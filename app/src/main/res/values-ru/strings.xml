@@ -1,0 +1,133 @@
+<resources>
+    <string name="app_name">Smart Xtream AI: IPTV Player</string>
+
+    <string name="title_live">Прямой эфир</string>
+    <string name="title_movies">Фильмы</string>
+    <string name="title_series">Сериалы</string>
+
+    <string name="btn_profile">Профиль</string>
+    <string name="btn_watch_now">СМОТРЕТЬ СЕЙЧАС</string>
+    <string name="btn_trailer">ТРЕЙЛЕР</string>
+    <string name="btn_back">Назад</string>
+    <string name="btn_save">Сохранить профиль</string>
+    <string name="btn_add_new">Добавить</string>
+    <string name="btn_manage">Управление</string>
+    <string name="btn_edit">Изменить</string>
+    <string name="btn_delete">Удалить</string>
+    <string name="btn_cancel">Отмена</string>
+    <string name="btn_yes">Да</string>
+    <string name="btn_ok">ОК</string>
+    <string name="btn_update">Обновить профиль</string>
+
+    <string name="text_connected">Подключено</string>
+    <string name="status_connected">Подключено</string>
+    <string name="status_connecting">Подключение…</string>
+    <string name="status_not_connected">Не подключено</string>
+    <string name="text_not_connected">Не подключено</string>
+    <string name="status_login_error">Ошибка входа</string>
+    <string name="text_login_error">Ошибка входа</string>
+    <string name="status_server_error">Нет сервера</string>
+    <string name="text_server_error">Нет сервера</string>
+    <string name="status_no_profile">Нет профиля</string>
+    <string name="text_no_profile">Нет профиля</string>
+    <string name="status_unlimited">Безлимит</string>
+    <string name="status_expired">Истек</string>
+
+    <string name="header_recommendations">Рекомендовано для вас</string>
+    <string name="text_recent_channels">Недавно добавленные каналы</string>
+    <string name="header_recent_channels">Недавно добавленные каналы</string>
+    <string name="text_live_recommendations">Для вас: Прямые трансляции</string>
+    <string name="header_live_recommendations">Для вас: Прямые трансляции</string>
+    <string name="text_movie_recommendations">Фильмы, которые могут вам понравиться</string>
+    <string name="header_movie_recommendations">Фильмы, которые могут вам понравиться</string>
+    <string name="text_series_recommendations">Сериалы для марафона</string>
+    <string name="header_series_recommendations">Сериалы для марафона</string>
+    <string name="header_episodes">ЭПИЗОДЫ</string>
+
+    <string name="label_plot">СЮЖЕТ</string>
+    <string name="label_cast">АКТЕРЫ</string>
+    <string name="label_director">РЕЖИССЕР</string>
+    <string name="label_rating">IMDB:</string>
+
+    <string name="hint_search_category">Поиск категории…</string>
+    <string name="hint_search_channel">Поиск канала…</string>
+    <string name="hint_search_movie">Поиск фильма…</string>
+    <string name="hint_search_series">Поиск сериала…</string>
+
+    <string name="title_add_profile">Добавить профиль</string>
+    <string name="title_favorites">Избранное</string>
+    <string name="radio_xtream">Xtream Codes</string>
+    <string name="radio_m3u">M3U плейлист</string>
+    <string name="hint_profile_name">Имя профиля (напр. Домашний)</string>
+    <string name="hint_username">Имя пользователя</string>
+    <string name="hint_password">Пароль</string>
+    <string name="hint_server_url">URL сервера (http://адрес.com:порт)</string>
+    <string name="hint_m3u_url">URL M3U плейлиста</string>
+    <string name="msg_fill_fields">Пожалуйста, заполните поля</string>
+    <string name="msg_profile_saved">Профиль сохранен!</string>
+
+    <string name="settings_title">Настройки приложения</string>
+    <string name="settings_audio_lang">Язык аудио</string>
+    <string name="settings_subtitle_lang">Язык субтитров</string>
+    <string name="settings_saved">Настройки сохранены</string>
+    <string name="settings_default_audio">Аудио по умолчанию</string>
+    <string name="settings_default_subtitle">Субтитры по умолчанию</string>
+
+    <string name="error_title">⚠️ Ошибка</string>
+    <string name="error_server_message">Эта ошибка исходит от источника трансляции, а не от приложения.</string>
+    <string name="error_no_internet">Нет интернета</string>
+    <string name="error_timeout">Тайм-аут</string>
+    <string name="error_not_found">Источник не найден</string>
+    <string name="error_player_init">Ошибка инициализации</string>
+    <string name="msg_loading">Загрузка…</string>
+    <string name="msg_select_profile">Пожалуйста, сначала выберите профиль</string>
+    <string name="msg_confirm_delete">Вы уверены, что хотите удалить этот профиль?</string>
+
+    <string name="desc_app_logo">Логотип приложения</string>
+    <string name="sub_settings">Настройки субтитров</string>
+    <string name="image_sound_settings">Настройки видео и звука</string>
+    <string name="btn_next_episode">След. эпизод ⏭</string>
+    <string name="btn_skip_intro">Пропустить интро ⏩</string>
+    <string name="favorilerim">Избранное</string>
+    <string name="btn_add_favorites">В избранное</string>
+    <string name="my_favorites">Избранное</string>
+    <string name="upcoming_matchs"><![CDATA[Предстоящие матчи и спорт]]></string>
+    <string name="Recently_added_new_episodes">Недавно добавленные (Новинки)</string>
+    <string name="img_logo_desc">Описание логотипа</string>
+    <string name="btn_favorites_desc">Кнопка избранного (сердце)</string>
+    <string name="btn_global_settings_desc">Кнопка настроек</string>
+    <string name="film_name">Название фильма</string>
+    <string name="channel_icon">Логотип канала</string>
+    <string name="text_network_speed">0 КБ/с</string>
+    <string name="desc_poster">Постер фильма</string>
+    <string name="sample_film_name">Пример названия фильма</string>
+    <string name="network_speed">Скорость соединения</string>
+    <string name="tv">ТВ</string>
+    <string name="film_header">Название фильма</string>
+    <string name="action">Экшн</string>
+    <string name="watch">⏵ СМОТРЕТЬ</string>
+    <string name="fragman">ТРЕЙЛЕР</string>
+    <string name="summary">СЮЖЕТ</string>
+    <string name="film_plot">Сюжет фильма…</string>
+    <string name="cast">АКТЕРЫ</string>
+    <string name="dash">-</string>
+    <string name="imdb">8.5 / 10</string>
+    <string name="search_subtitle_online">🌐 Поиск субтитров онлайн</string>
+    <string name="img_poster">Постер</string>
+    <string name="movie_header">Название фильма</string>
+    <string name="imdb_rating">8.5 / 10</string>
+    <string name="action_adventure">Экшн, Приключения</string>
+    <string name="watch_now">⏵ СМОТРЕТЬ СЕЙЧАС</string>
+    <string name="trailer">ТРЕЙЛЕР</string>
+    <string name="movie_plot_loading">Загрузка сюжета…</string>
+    <string name="director">РЕЖИССЕР</string>
+    <string name="minus">-</string>
+    <string name="line_vertical">|</string>
+    <string name="series_header">Название сериала</string>
+    <string name="imdb_8_5_action">IMDB: 8.5 | Экшн</string>
+    <string name="series_plot">Сюжет сериала…</string>
+    <string name="series_plot_will_be_here">Сюжет сериала будет здесь…</string>
+    <string name="title_matches">Матчи сегодня</string>
+    <string name="title_latest">Недавно добавленные</string>
+    <string name="error_stream_not_found">Поток не найден или офлайн.</string>
+</resources>

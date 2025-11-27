@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NextGen Xtream AI IPTV 4k"
+rootProject.name = "Smart Xtream AI IPTV Player"
 include(":app")

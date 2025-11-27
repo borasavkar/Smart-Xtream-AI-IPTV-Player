@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">NextGen Xtream AI IPTV 4k</string>
+    <string name="app_name">Smart Xtream AI: IPTV Player</string>
 
     <string name="title_live">Canlı</string>
     <string name="title_movies">Filmler</string>
@@ -21,7 +21,7 @@
 
     <string name="text_connected">Bağlandı</string>
     <string name="status_connected">Bağlandı</string>
-    <string name="status_connecting">Bağlanıyor...</string>
+    <string name="status_connecting">Bağlanıyor…</string>
     <string name="status_not_connected">Bağlı Değil</string>
     <string name="text_not_connected">Bağlı Değil</string>
     <string name="status_login_error">Giriş Hatası</string>
@@ -108,7 +108,7 @@
     <string name="watch">⏵ İZLE</string>
     <string name="fragman">FRAGMAN</string>
     <string name="summary">ÖZET</string>
-    <string name="film_plot">Film konusu...</string>
+    <string name="film_plot">Film konusu…</string>
     <string name="cast">OYUNCULAR</string>
     <string name="dash">-</string>
     <string name="imdb">8.5 / 10</string>
