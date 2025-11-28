@@ -22,10 +22,10 @@ import com.bybora.smartxtream.network.EpgListing
 import com.bybora.smartxtream.network.LiveStream
 import com.bybora.smartxtream.network.RetrofitClient
 import com.bybora.smartxtream.network.VodStream
-import com.bybora.smartxtream.utils.BillingManager
 import com.bybora.smartxtream.utils.ContentCache
 import com.bybora.smartxtream.utils.M3UParser
 import com.bybora.smartxtream.utils.SettingsManager
+import com.bybora.smartxtream.utils.TrialManager
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -45,9 +45,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private val interactionDao by lazy { db.interactionDao() }
     private val favoriteDao by lazy { db.favoriteDao() }
 
-    private lateinit var billingManager: BillingManager
-
-    // UI
+    // UI Bileşenleri
     private lateinit var buttonAddProfile: MaterialButton
     private lateinit var btnGlobalSettings: ImageButton
     private lateinit var btnFavorites: ImageButton
@@ -85,7 +83,35 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setupBilling()
+
+        // --- 1. GÜVENLİK VE ABONELİK KONTROLÜ (KAPI BEKÇİSİ) ---
+        // Uygulama açılır açılmaz durumu kontrol et.
+
+        val isPremium = SettingsManager.isPremiumUser(this)
+
+        if (!isPremium) {
+            // Eğer Premium değilse, deneme süresine bak
+            val isTrialActive = TrialManager.checkTrialStatus(this)
+
+            if (!isTrialActive) {
+                // SÜRE BİTMİŞ!
+                Toast.makeText(this, "Deneme süreniz bitti. Lütfen abone olun.", Toast.LENGTH_LONG).show()
+
+                // Satın alma ekranına yönlendir
+                val intent = Intent(this, SubscriptionActivity::class.java)
+                startActivity(intent)
+                finish() // Kullanıcı geri tuşuyla bu ekrana dönemesin, uygulamayı kapat
+                return // Aşağıdaki kodları çalıştırma
+            } else {
+                // Deneme sürüyor, kaç gün kaldı uyarısı ver (Sadece az kaldıysa)
+                val daysLeft = TrialManager.getRemainingDays(this)
+                if (daysLeft < 4) {
+                    Toast.makeText(this, "Deneme Sürümü: Son $daysLeft gün!", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+        // -------------------------------------------------------
+
         setContentView(R.layout.activity_main)
 
         initViews()
@@ -222,25 +248,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         recyclerLatest.adapter = latestAdapter
     }
 
-    private fun setupBilling() {
-        billingManager = BillingManager(this,
-            { Log.d("Billing", "OK") },
-            { showSubscriptionBlocker() }
-        )
-        billingManager.startConnection()
-    }
-
-    private fun showSubscriptionBlocker() {
-        if(!isFinishing) {
-            AlertDialog.Builder(this)
-                .setTitle("Abonelik")
-                .setMessage("Devam etmek için abone olun.")
-                .setPositiveButton("Abone Ol") { _,_ -> billingManager.launchPurchaseFlow(this) }
-                .setCancelable(false)
-                .show()
-        }
-    }
-
     private fun setupDashboardCards() {
         cardTv.findViewById<TextView>(R.id.card_title).setText(R.string.title_live)
         cardFilms.findViewById<TextView>(R.id.card_title).setText(R.string.title_movies)
@@ -310,7 +317,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private fun observeFavorites() {
         lifecycleScope.launch {
             favoriteDao.getAllFavorites().collectLatest { favList ->
-                // Favoriler az olduğu için main thread sorun olmaz ama yine de IO iyidir
                 val mappedFavs = withContext(Dispatchers.Default) {
                     val safeFavList = favList.filter { isSafeContent(it.name) }
                     safeFavList.map { fav ->
@@ -342,7 +348,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         }
     }
 
-    // --- KRİTİK OPTİMİZASYON BÖLGESİ ---
+    // --- İÇERİK YÜKLEME ---
     private fun loadAllContent(profile: Profile) {
         progressBar.visibility = View.VISIBLE
 
@@ -385,12 +391,10 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                         }
                         ContentCache.update(profile.id, ch, mv, sr, ep)
                     }
-                    // Veriyi Paketle ve Döndür
                     Quadruple(ch, mv, sr, ep)
                 }
 
-                // 2. AĞIR İŞLEME (DEFAULT Thread - CPU Yoğun İşler)
-                // UI'ı dondurmadan hesaplamaları burada yapıyoruz
+                // 2. AĞIR İŞLEME (DEFAULT Thread)
                 val (todayMatches, latestItems, recommendedItems) = withContext(Dispatchers.Default) {
 
                     val safeChannels = channels.filter { isSafeContent(it.name) }
@@ -421,8 +425,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                         }.take(20)
                     } else emptyList()
 
-                    // --- SON EKLENENLER (GÜNCELLENDİ) ---
-                    // Önce film/dizi ismindeki yıla (örn: 2024) bakar, sonra ID sırasına göre dizer.
+                    // --- SON EKLENENLER (Yıla göre sıralı) ---
                     val newMovies = safeMovies.sortedWith(
                         compareByDescending<VodStream> { getYearFromName(it.name) }
                             .thenByDescending { it.streamId }
@@ -473,7 +476,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                 }
 
                 // 3. UI GÜNCELLEME (Main Thread)
-                // Hesaplanan verileri ekrana bas
                 if (todayMatches.isNotEmpty()) {
                     matchAdapter.submitList(todayMatches)
                     titleMatches.visibility = View.VISIBLE
@@ -511,10 +513,8 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         }
     }
 
-    // Basit bir veri taşıyıcı (Quadruple standart kütüphanede yoktur, elle ekledik veya Pair/Triple kullanabiliriz ama bu daha temiz)
     data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
-    // --- YARDIMCI FONKSİYONLAR ---
     private fun isSafeContent(name: String?): Boolean {
         if (name == null) return false
         val lowerName = name.lowercase(Locale.getDefault())
@@ -587,12 +587,10 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private fun openFilmList() { activeProfile?.let { val intent = Intent(this, FilmsActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
     private fun openSeriesList() { activeProfile?.let { val intent = Intent(this, SeriesListActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
     private fun showProfileWarning() { Toast.makeText(this, getString(R.string.msg_select_profile), Toast.LENGTH_SHORT).show(); showProfileSelectionDialog() }
-    private fun formatTimestamp(timestamp: String): String { return try { val expiryLong = timestamp.toLong() * 1000; val date = Date(expiryLong); val sdf = SimpleDateFormat("dd MMMM yyyy", Locale("tr")); sdf.timeZone = TimeZone.getDefault(); sdf.format(date) } catch (e: Exception) { "Geçersiz Tarih" } }
+    private fun formatTimestamp(timestamp: String): String { return try { val expiryLong = timestamp.toLong() * 1000; val date = Date(expiryLong); val sdf = SimpleDateFormat("dd MMMM yyyy",Locale.forLanguageTag("tr")); sdf.timeZone = TimeZone.getDefault(); sdf.format(date) } catch (e: Exception) { "Geçersiz Tarih" } }
 
-    // Film isminden yılı çeken yardımcı fonksiyon (YENİ EKLENDİ)
     private fun getYearFromName(name: String?): Int {
         if (name.isNullOrEmpty()) return 0
-        // 1900-2099 arası yılları bulur
         val regex = "(19|20)\\d{2}".toRegex()
         val lastMatch = regex.findAll(name).lastOrNull()
         return lastMatch?.value?.toIntOrNull() ?: 0

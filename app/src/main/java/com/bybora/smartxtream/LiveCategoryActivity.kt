@@ -179,8 +179,10 @@ class LiveCategoryActivity : BaseActivity(), OnCategoryClickListener, OnChannelC
         categorySearchJob?.cancel()
         categorySearchJob = lifecycleScope.launch {
             if (isAuto) delay(300)
-            val q = txt.lowercase(Locale("tr"))
-            val res = withContext(Dispatchers.IO) { if (q.isEmpty()) allCategories else allCategories.filter { it.categoryName.lowercase(Locale("tr")).contains(q) } }
+            // DÜZELTME: Locale("tr") yerine Locale.forLanguageTag("tr")
+            val locale = Locale.forLanguageTag("tr")
+            val q = txt.lowercase(locale)
+            val res = withContext(Dispatchers.IO) { if (q.isEmpty()) allCategories else allCategories.filter { it.categoryName.lowercase(locale).contains(q) } }
             categoryAdapter.submitList(res)
         }
     }
@@ -189,9 +191,11 @@ class LiveCategoryActivity : BaseActivity(), OnCategoryClickListener, OnChannelC
         channelSearchJob?.cancel()
         channelSearchJob = lifecycleScope.launch {
             if (isAuto) delay(500)
-            val q = txt.lowercase(Locale("tr"))
+            // DÜZELTME: Locale güncellemesi
+            val locale = Locale.forLanguageTag("tr")
+            val q = txt.lowercase(locale)
             val res = withContext(Dispatchers.IO) {
-                if (q.isNotEmpty()) allChannels.filter { it.name?.lowercase(Locale("tr"))?.contains(q) == true }
+                if (q.isNotEmpty()) allChannels.filter { it.name?.lowercase(locale)?.contains(q) == true }
                 else if (selectedCategoryId != null && selectedCategoryId != "0") allChannels.filter { it.categoryId == selectedCategoryId }
                 else allChannels
             }
@@ -199,29 +203,31 @@ class LiveCategoryActivity : BaseActivity(), OnCategoryClickListener, OnChannelC
         }
     }
 
-    override fun onCategoryClick(c: LiveCategory) {
-        selectedCategoryId = c.categoryId
+    // --- DÜZELTME: Parametre ismi 'c' yerine 'category' ---
+    override fun onCategoryClick(category: LiveCategory) {
+        selectedCategoryId = category.categoryId
         inputSearchChannel.text?.clear()
         lifecycleScope.launch(Dispatchers.IO) {
-            val res = if (c.categoryId == "0") allChannels else allChannels.filter { it.categoryId == c.categoryId }
+            val res = if (category.categoryId == "0") allChannels else allChannels.filter { it.categoryId == category.categoryId }
             withContext(Dispatchers.Main) { updateChannelList(res) }
         }
     }
 
-    override fun onChannelClick(ch: ChannelWithEpg) {
+    // --- DÜZELTME: Parametre ismi 'ch' yerine 'channelWithEpg' ---
+    override fun onChannelClick(channelWithEpg: ChannelWithEpg) {
         startActivity(Intent(this, PlayerActivity::class.java).apply {
             putExtra("EXTRA_SERVER_URL", serverUrl)
             putExtra("EXTRA_USERNAME", username)
             putExtra("EXTRA_PASSWORD", password)
-            putExtra("EXTRA_STREAM_ID", ch.channel.streamId)
+            putExtra("EXTRA_STREAM_ID", channelWithEpg.channel.streamId)
             putExtra("EXTRA_STREAM_TYPE", "live")
-            putExtra("EXTRA_CATEGORY_ID", ch.channel.categoryId)
+            putExtra("EXTRA_CATEGORY_ID", channelWithEpg.channel.categoryId)
 
-            putExtra("EXTRA_STREAM_NAME", ch.channel.name)
-            putExtra("EXTRA_STREAM_ICON", ch.channel.streamIcon)
+            putExtra("EXTRA_STREAM_NAME", channelWithEpg.channel.name)
+            putExtra("EXTRA_STREAM_ICON", channelWithEpg.channel.streamIcon)
 
-            if (isM3u && ch.channel.directSource != null) {
-                putExtra("EXTRA_DIRECT_URL", ch.channel.directSource)
+            if (isM3u && channelWithEpg.channel.directSource != null) {
+                putExtra("EXTRA_DIRECT_URL", channelWithEpg.channel.directSource)
             }
         })
     }

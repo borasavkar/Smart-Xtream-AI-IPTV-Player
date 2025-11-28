@@ -2,17 +2,17 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
-    id("kotlin-kapt") // Glide compiler (kapt) için gerekli eklenti
+    // id("kotlin-kapt") // SİLDİK: KSP kullanıyoruz
 }
 
 android {
     namespace = "com.bybora.smartxtream"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.bybora.smartxtream"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -38,28 +38,30 @@ android {
 }
 
 dependencies {
-    implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0")
-    // --- Varsayılan AndroidX Kütüphaneleri ---
+    // --- OkHttp ---
+    implementation(libs.squareup.okhttp)
+    implementation(libs.squareup.okhttp.dnsoverhttps)
+
+    // --- AndroidX Temel ---
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    // OkHttp (İnternetten dosya indirmek için)
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-
 
     // Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
-    // --- Bora'nın IPTV Projesi Kütüphaneleri ---
+    // --- Smart Xtream Kütüphaneleri ---
 
-    // 1. Video Oynatıcı: Media3 (ExoPlayer)
+    // 1. Video Oynatıcı: Media3
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.exoplayer.hls)
+    // KRİTİK EKLEME: Bu satır eksikti, geri ekledik:
+    implementation(libs.androidx.media3.datasource.okhttp)
 
     // 2. API İstemcisi: Retrofit
     implementation(libs.squareup.retrofit)
@@ -68,21 +70,19 @@ dependencies {
     implementation(libs.squareup.retrofit.converter.moshi)
     implementation(libs.squareup.moshi.kotlin)
 
-    // 4. Lifecycle (ViewModelScope ve lifecycleScope)
+    // 4. Lifecycle
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
-    // 5. Veritabanı: Room (KSP Kullanarak)
+    // 5. Veritabanı: Room (KSP)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // 6. Resim Yükleme: Glide (KAPT Kullanarak)
-    implementation("com.github.bumptech.glide:glide:5.0.5")
-    kapt("com.github.bumptech.glide:compiler:5.0.5")
-    // Google Play Ödeme Sistemi
-    implementation("com.android.billingclient:billing-ktx:6.1.0")
-    // ExoPlayer OkHttp Eklentisi (Daha hızlı internet bağlantısı için)
-    implementation("androidx.media3:media3-datasource-okhttp:1.2.0")
-    // Not: Versiyon numarası diğer media3 kütüphaneleriyle aynı olmalı (örn: 1.2.0 veya 1.X.X)
+    // 6. Resim Yükleme: Glide (KSP)
+    implementation(libs.glide)
+    ksp(libs.glide.compiler)
+
+    // 7. Google Play Ödeme
+    implementation(libs.billing)
 }

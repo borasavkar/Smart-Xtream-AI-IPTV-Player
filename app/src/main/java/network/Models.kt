@@ -35,11 +35,11 @@ data class LiveStream(
     val directSource: String? = null
 )
 
-// LiveCategory (Canlı, Film ve Dizi Kategorileri için ortak)
+// LiveCategory (Canlı, Film ve Dizi Kategorileri için ortak kullanılabilir)
 data class LiveCategory(
     @Json(name = "category_id") val categoryId: String,
     @Json(name = "category_name") val categoryName: String,
-    @Json(name = "parent_id") val parentId: Int? = 0 // Null olabilir
+    @Json(name = "parent_id") val parentId: Int? = 0 // Null gelebilir, varsayılan 0
 )
 
 // --- FİLMLER (VOD) ---
@@ -51,13 +51,13 @@ data class VodStream(
     @Json(name = "container_extension") val fileExtension: String?
 )
 
-// Film Kategorileri için Özel Model (Hata riskini azaltmak için)
+// Film Kategorileri için Özel Model
 data class VodCategory(
     @Json(name = "category_id") val categoryId: String,
     @Json(name = "category_name") val categoryName: String
 )
 
-// Film Detayları
+// Film Detayları (API'den gelen detay yanıtı)
 data class VodInfoResponse(
     val info: VodInfoData?,
     @Json(name = "movie_data") val movieData: VodMovieData?
@@ -79,7 +79,9 @@ data class VodInfoData(
 data class VodMovieData(
     @Json(name = "stream_id") val streamId: Int,
     @Json(name = "container_extension") val extension: String?,
-    @Json(name = "name") val name: String?
+    @Json(name = "name") val name: String?,
+    // DÜZELTME: Bu alan eksikti, 'FilmsActivity' hatasını çözmek için eklendi
+    @Json(name = "category_id") val categoryId: String?
 )
 
 // --- DİZİLER (SERIES) ---
@@ -91,11 +93,10 @@ data class SeriesStream(
     @Json(name = "category_id") val categoryId: String?
 )
 
-// --- DÜZELTİLEN KISIM BURASI ---
-// Dizi Detayları (Info Eklendi)
+// Dizi Detayları
 data class SeriesInfoResponse(
     val seasons: List<Season>?,
-    // Bu 'info' nesnesi eksikti, şimdi ekledik:
+    // Dizi genel bilgileri
     val info: SeriesInfoData?,
     val episodes: Map<String, List<Episode>>?
 )
@@ -119,7 +120,7 @@ data class Season(
 )
 
 data class Episode(
-    val id: String, // String gelebilir, Int'e çeviriyoruz
+    val id: String, // Bazı sunucularda String gelebilir
     val title: String?,
     @Json(name = "container_extension") val fileExtension: String?,
     val info: EpisodeInfo?,
@@ -148,7 +149,7 @@ data class EpgListing(
     val description: String?
 )
 
-// --- UI YARDIMCI MODELLER ---
+// --- UI YARDIMCI MODELLER (Veritabanı veya API değil, sadece arayüz için) ---
 data class ChannelWithEpg(
     val channel: LiveStream,
     var epgNow: EpgListing?

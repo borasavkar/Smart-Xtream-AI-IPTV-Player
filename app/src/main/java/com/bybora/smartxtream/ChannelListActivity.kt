@@ -148,7 +148,7 @@ class ChannelListActivity : BaseActivity(), OnChannelClickListener {
     private fun String.normalize(): String {
         val original = arrayOf('ı', 'İ', 'ş', 'Ş', 'ğ', 'Ğ', 'ü', 'Ü', 'ö', 'Ö', 'ç', 'Ç')
         val normalized = arrayOf('i', 'i', 's', 's', 'g', 'g', 'u', 'u', 'o', 'o', 'c', 'c')
-        var result = this.lowercase(Locale("tr"))
+        var result = this.lowercase(Locale.forLanguageTag("tr"))
         original.forEachIndexed { index, char -> result = result.replace(char, normalized[index]) }
         return result
     }

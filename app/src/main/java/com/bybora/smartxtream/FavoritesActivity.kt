@@ -69,9 +69,9 @@ class FavoritesActivity : BaseActivity(), OnChannelClickListener {
         }
     }
 
-    override fun onChannelClick(item: ChannelWithEpg) {
+    override fun onChannelClick(channelWithEpg: ChannelWithEpg) {
         // Tıklanınca ne olduğunu (Film/Dizi/Canlı) anlayıp oraya git
-        val typeLabel = item.epgNow?.title ?: "live"
+        val typeLabel = channelWithEpg.epgNow?.title ?: "live"
         val type = when(typeLabel) {
             "Film" -> "vod"
             "Dizi" -> "series"
@@ -83,7 +83,7 @@ class FavoritesActivity : BaseActivity(), OnChannelClickListener {
                 putExtra("EXTRA_SERVER_URL", serverUrl)
                 putExtra("EXTRA_USERNAME", username)
                 putExtra("EXTRA_PASSWORD", password)
-                putExtra("EXTRA_SERIES_ID", item.channel.streamId)
+                putExtra("EXTRA_SERIES_ID", channelWithEpg.channel.streamId)
             }
             startActivity(intent)
         } else if (type == "vod") {
@@ -91,7 +91,7 @@ class FavoritesActivity : BaseActivity(), OnChannelClickListener {
                 putExtra("EXTRA_SERVER_URL", serverUrl)
                 putExtra("EXTRA_USERNAME", username)
                 putExtra("EXTRA_PASSWORD", password)
-                putExtra("EXTRA_STREAM_ID", item.channel.streamId)
+                putExtra("EXTRA_STREAM_ID", channelWithEpg.channel.streamId)
             }
             startActivity(intent)
         } else {
@@ -99,7 +99,7 @@ class FavoritesActivity : BaseActivity(), OnChannelClickListener {
                 putExtra("EXTRA_SERVER_URL", serverUrl)
                 putExtra("EXTRA_USERNAME", username)
                 putExtra("EXTRA_PASSWORD", password)
-                putExtra("EXTRA_STREAM_ID", item.channel.streamId)
+                putExtra("EXTRA_STREAM_ID", channelWithEpg.channel.streamId)
                 putExtra("EXTRA_STREAM_TYPE", "live")
             }
             startActivity(intent)

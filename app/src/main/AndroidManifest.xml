@@ -46,6 +46,18 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden" />
 
+        <activity
+            android:name=".SubscriptionActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".TrailerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="sensorLandscape"
+            android:hardwareAccelerated="true"  android:theme="@style/Theme.AppCompat.NoActionBar" />
+
     </application>
 
 </manifest>

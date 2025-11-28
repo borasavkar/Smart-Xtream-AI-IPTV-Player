@@ -126,6 +126,7 @@
                 android:textSize="16sp"
                 android:textStyle="bold"/>
 
+
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btn_trailer"
                 android:layout_width="0dp"

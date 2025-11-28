@@ -117,7 +117,7 @@
     <string name="movie_header">Film Başlığı</string>
     <string name="imdb_rating">8.5 / 10</string>
     <string name="action_adventure">Aksiyon, Macera</string>
-    <string name="watch_now">⏵ HEMEN İZLE</string>
+    <string name="watch_now">HEMEN İZLE</string>
     <string name="trailer">FRAGMAN</string>
     <string name="movie_plot_loading">Film konusu yükleniyor…</string>
     <string name="director">YÖNETMEN</string>
@@ -130,4 +130,12 @@
     <string name="title_matches">Günün Maçları</string>
     <string name="title_latest">Son Eklenenler</string>
     <string name="error_stream_not_found">Yayın bulunamadı veya çevrimdışı.</string>
+    <string name="TV">TV</string>
+    <string name="annual_subscription_with_advantage">Yıllık Abonelik (Avantajlı)</string>
+    <string name="lifeTime_subscription">Ömür Boyu Erişim</string>
+    <string name="tria_exp_text">Deneme süreniz dolduysa devam etmek için abone olmalısınız.</string>
+    <string name="monthly_subscription">Aylık Abonelik</string>
+    <string name="open_premium_properties">Premium Özellikleri Açın</string>
+    <string name="premium">Premium</string>
+    <string name="close">Kapat</string>
 </resources>

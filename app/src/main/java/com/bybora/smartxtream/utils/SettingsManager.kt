@@ -68,4 +68,15 @@ object SettingsManager {
         val defaultLang = getSystemLanguage()
         return getPrefs(context).getString(KEY_SUBTITLE_LANG, defaultLang) ?: defaultLang
     }
+    // --- PREMIUM KONTROLÜ ---
+    private const val KEY_IS_PREMIUM = "is_premium_user"
+
+    fun setPremiumStatus(context: Context, isPremium: Boolean) {
+        getPrefs(context).edit { putBoolean(KEY_IS_PREMIUM, isPremium) }
+    }
+
+    // Güvenlik Notu: Gerçek bir uygulamada bu kontrolü sunucu tarafında yapmak en güvenlisidir.
+    fun isPremiumUser(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_IS_PREMIUM, false)
+    }
 }

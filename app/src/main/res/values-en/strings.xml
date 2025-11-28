@@ -130,4 +130,5 @@
     <string name="title_matches">Today\'s Matches</string>
     <string name="title_latest">Recently Added</string>
     <string name="error_stream_not_found">Stream not found or offline.</string>
+    <string name="TV">TV</string>
 </resources>

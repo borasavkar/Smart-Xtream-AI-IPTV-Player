@@ -47,12 +47,15 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_films)
+
         initViews()
+
         if (!getIntentData()) {
             Toast.makeText(this, "Profil hatası", Toast.LENGTH_SHORT).show()
             finish()
             return
         }
+
         setupAdapters()
         setupSearchListeners()
         fetchAllData()
@@ -79,6 +82,7 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
     private fun setupAdapters() {
         categoryAdapter = LiveCategoryAdapter(this)
         recyclerCategories.adapter = categoryAdapter
+
         filmAdapter = FilmAdapter(this)
         recyclerFilms.adapter = filmAdapter
     }
@@ -89,7 +93,7 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
 
         lifecycleScope.launch {
             try {
-                // SADECE XTREAM KOMUTLARI (Temiz ve Güvenli)
+                // Paralel olarak Kategorileri ve Filmleri çek
                 val catDeferred = async { apiService.getVodCategories(username!!, password!!) }
                 val vodDeferred = async { apiService.getVodStreams(username!!, password!!) }
 
@@ -97,23 +101,32 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
                 val vodResponse = vodDeferred.await()
 
                 if (catResponse.isSuccessful && vodResponse.isSuccessful) {
-                    // VodCategory -> LiveCategory dönüşümü (Güvenlik için)
                     val rawCats = catResponse.body() ?: emptyList()
+
+                    // VodCategory -> LiveCategory Dönüşümü
+                    // (LiveCategory ortak model olduğu için ve 'parentId' istediği için 0 veriyoruz)
                     allCategories = rawCats.map {
                         LiveCategory(it.categoryId, it.categoryName, 0)
                     }
+
                     allFilms = vodResponse.body() ?: emptyList()
 
-                    // Sayımları Hesapla
+                    // Sayımları Hesapla (Hangi kategoride kaç film var?)
                     withContext(Dispatchers.IO) {
                         val counts = HashMap<String, Int>()
+
+                        // "Tümü" Kategorisi
                         val allCat = LiveCategory("0", "Tüm Filmler", 0)
                         val mutableCats = mutableListOf(allCat)
                         mutableCats.addAll(allCategories)
                         allCategories = mutableCats
 
+                        // Tümü için toplam sayı
                         counts["0"] = allFilms.size
+
+                        // Her kategori için sayı
                         allFilms.forEach { f ->
+                            // Models.kt güncellemesinden sonra categoryId artık VodStream içinde mevcut
                             val cId = f.categoryId ?: "0"
                             counts[cId] = (counts[cId] ?: 0) + 1
                         }
@@ -126,31 +139,46 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
                     }
                     progressBar.visibility = View.GONE
                 } else {
-                    showError("Veri alınamadı.")
+                    showError("Veri alınamadı. Lütfen tekrar deneyin.")
                 }
             } catch (e: Exception) {
-                showError("Sunucu hatası.")
+                showError("Sunucu hatası: ${e.message}")
             }
         }
     }
 
     // --- ARAMA İŞLEMLERİ ---
     private fun setupSearchListeners() {
+        // Kategori Araması
         inputSearchCategory.addTextChangedListener { performCategorySearch(it.toString(), true) }
         layoutSearchCategory.setEndIconOnClickListener { performCategorySearch(inputSearchCategory.text.toString(), false) }
-        inputSearchCategory.setOnEditorActionListener { _, id, _ -> if (id == EditorInfo.IME_ACTION_SEARCH) { performCategorySearch(inputSearchCategory.text.toString(), false); true } else false }
+        inputSearchCategory.setOnEditorActionListener { _, id, _ ->
+            if (id == EditorInfo.IME_ACTION_SEARCH) {
+                performCategorySearch(inputSearchCategory.text.toString(), false)
+                true
+            } else false
+        }
 
+        // Film Araması
         inputSearchFilm.addTextChangedListener { performFilmSearch(it.toString(), true) }
         layoutSearchFilm.setEndIconOnClickListener { performFilmSearch(inputSearchFilm.text.toString(), false) }
-        inputSearchFilm.setOnEditorActionListener { _, id, _ -> if (id == EditorInfo.IME_ACTION_SEARCH) { performFilmSearch(inputSearchFilm.text.toString(), false); true } else false }
+        inputSearchFilm.setOnEditorActionListener { _, id, _ ->
+            if (id == EditorInfo.IME_ACTION_SEARCH) {
+                performFilmSearch(inputSearchFilm.text.toString(), false)
+                true
+            } else false
+        }
     }
 
     private fun performCategorySearch(txt: String, isAuto: Boolean) {
         categorySearchJob?.cancel()
         categorySearchJob = lifecycleScope.launch {
-            if (isAuto) delay(300)
-            val q = txt.lowercase(Locale("tr"))
-            val res = withContext(Dispatchers.IO) { if (q.isEmpty()) allCategories else allCategories.filter { it.categoryName.lowercase(Locale("tr")).contains(q) } }
+            if (isAuto) delay(300) // Hızlı yazarken bekle
+            val q = txt.lowercase(Locale.forLanguageTag("tr"))
+            val res = withContext(Dispatchers.IO) {
+                if (q.isEmpty()) allCategories
+                else allCategories.filter { it.categoryName.lowercase(Locale.forLanguageTag("tr")).contains(q) }
+            }
             categoryAdapter.submitList(res)
         }
     }
@@ -159,38 +187,53 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
         filmSearchJob?.cancel()
         filmSearchJob = lifecycleScope.launch {
             if (isAuto) delay(500)
-            val q = txt.lowercase(Locale("tr"))
+            val q = txt.lowercase(Locale.forLanguageTag("tr"))
             val res = withContext(Dispatchers.IO) {
-                if (q.isNotEmpty()) allFilms.filter { it.name?.lowercase(Locale("tr"))?.contains(q) == true }
-                else if (selectedCategoryId != null && selectedCategoryId != "0") allFilms.filter { it.categoryId == selectedCategoryId }
-                else allFilms
+                if (q.isNotEmpty()) {
+                    // İsim içinde arama yap
+                    allFilms.filter { it.name?.lowercase(Locale.forLanguageTag("tr"))?.contains(q) == true }
+                } else if (selectedCategoryId != null && selectedCategoryId != "0") {
+                    // Kategori seçiliyse sadece o kategoridekileri göster
+                    allFilms.filter { it.categoryId == selectedCategoryId }
+                } else {
+                    // Hiçbir şey yoksa hepsini göster
+                    allFilms
+                }
             }
             filmAdapter.submitList(res)
         }
     }
 
     // --- TIKLAMALAR ---
-    override fun onCategoryClick(c: LiveCategory) {
-        selectedCategoryId = c.categoryId
-        inputSearchFilm.text?.clear()
+    override fun onCategoryClick(category: LiveCategory) {
+        selectedCategoryId = category.categoryId
+        inputSearchFilm.text?.clear() // Kategori değişince film aramasını temizle
+
         lifecycleScope.launch(Dispatchers.IO) {
-            val res = if (c.categoryId == "0") allFilms else allFilms.filter { it.categoryId == c.categoryId }
-            withContext(Dispatchers.Main) { filmAdapter.submitList(res) }
+            val res = if (category.categoryId == "0") allFilms else allFilms.filter { it.categoryId == category.categoryId }
+            withContext(Dispatchers.Main) {
+                filmAdapter.submitList(res)
+                // Listeyi başa sar
+                recyclerFilms.scrollToPosition(0)
+            }
         }
     }
 
-    override fun onFilmClick(f: VodStream) {
-        // Detay sayfasına git (Sadece Xtream olduğu için güvenli)
+    override fun onFilmClick(film: VodStream) {
+        // Detay sayfasına git
         val intent = Intent(this, FilmDetailActivity::class.java).apply {
             putExtra("EXTRA_SERVER_URL", serverUrl)
             putExtra("EXTRA_USERNAME", username)
             putExtra("EXTRA_PASSWORD", password)
-            putExtra("EXTRA_STREAM_ID", f.streamId)
+            putExtra("EXTRA_STREAM_ID", film.streamId)
             putExtra("EXTRA_STREAM_TYPE", "vod")
-            putExtra("EXTRA_EXTENSION", f.fileExtension)
+            putExtra("EXTRA_EXTENSION", film.fileExtension)
         }
         startActivity(intent)
     }
 
-    private fun showError(msg: String) { progressBar.visibility = View.GONE; Toast.makeText(this, msg, Toast.LENGTH_SHORT).show() }
+    private fun showError(msg: String) {
+        progressBar.visibility = View.GONE
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+    }
 }

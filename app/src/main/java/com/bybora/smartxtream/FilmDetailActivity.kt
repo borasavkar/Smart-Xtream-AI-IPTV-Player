@@ -1,7 +1,6 @@
 package com.bybora.smartxtream
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -15,7 +14,6 @@ import com.bumptech.glide.Glide
 import com.bybora.smartxtream.database.AppDatabase
 import com.bybora.smartxtream.database.Favorite
 import com.bybora.smartxtream.network.RetrofitClient
-import com.bybora.smartxtream.network.VodInfoData
 import kotlinx.coroutines.launch
 
 class FilmDetailActivity : BaseActivity() {
@@ -26,13 +24,12 @@ class FilmDetailActivity : BaseActivity() {
     private lateinit var textTitle: TextView
     private lateinit var textRating: TextView
     private lateinit var textGenre: TextView
-    private lateinit var textPlot: TextView
+    private lateinit var textDescription: TextView
     private lateinit var textCast: TextView
     private lateinit var textDirector: TextView
     private lateinit var btnPlay: Button
     private lateinit var btnTrailer: Button
-    private lateinit var btnBack: ImageButton
-    private lateinit var btnFavorite: ImageButton // <-- Favori Butonu
+    private lateinit var btnFavorite: ImageButton
     private lateinit var progressBar: ProgressBar
 
     // Veriler
@@ -40,15 +37,17 @@ class FilmDetailActivity : BaseActivity() {
     private var username: String? = null
     private var password: String? = null
     private var streamId: Int = -1
+    private var trailerUrl: String? = null
 
-    // Oynatma için gerekli detaylar
-    private var finalStreamExtension: String = "mp4"
+    // --- DÜZELTME: Dosya uzantısını saklayacak değişken ---
+    private var currentExtension: String = "mp4" // Varsayılan mp4 ama API'den güncellenecek
 
-    // Favori İşlemleri İçin
+    // Favori İşlemleri
     private val db by lazy { AppDatabase.getInstance(this) }
     private var isFav = false
-    private var currentFilmName = ""
-    private var currentFilmImage = ""
+    private var currentMovieName = ""
+    private var currentMovieImage = ""
+    private var categoryId = "0"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,9 +56,9 @@ class FilmDetailActivity : BaseActivity() {
         initViews()
 
         if (getIntentData()) {
-            fetchFilmDetails()
+            fetchMovieDetails()
+            checkFavoriteStatus()
         } else {
-            Toast.makeText(this, "Film verisi eksik", Toast.LENGTH_SHORT).show()
             finish()
         }
     }
@@ -70,22 +69,29 @@ class FilmDetailActivity : BaseActivity() {
         textTitle = findViewById(R.id.text_title)
         textRating = findViewById(R.id.text_rating)
         textGenre = findViewById(R.id.text_genre)
-        textPlot = findViewById(R.id.text_plot)
+        textDescription = findViewById(R.id.text_plot)
         textCast = findViewById(R.id.text_cast)
         textDirector = findViewById(R.id.text_director)
 
         btnPlay = findViewById(R.id.btn_play)
         btnTrailer = findViewById(R.id.btn_trailer)
-        btnBack = findViewById(R.id.btn_back)
-        btnFavorite = findViewById(R.id.btn_favorite) // <-- Favori Butonu ID'si (XML'e eklenmeli)
-
+        btnFavorite = findViewById(R.id.btn_favorite)
         progressBar = findViewById(R.id.progress_loader)
 
-        // Tıklama Olayları
-        btnBack.setOnClickListener { finish() }
+        findViewById<View>(R.id.btn_back).setOnClickListener { finish() }
+
         btnPlay.setOnClickListener { playMovie() }
 
-        // Favori Tıklaması
+        btnTrailer.setOnClickListener {
+            if (!trailerUrl.isNullOrEmpty()) {
+                val intent = Intent(this, TrailerActivity::class.java)
+                intent.putExtra("EXTRA_TRAILER_URL", trailerUrl)
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "Fragman bulunamadı", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         btnFavorite.setOnClickListener { toggleFavorite() }
     }
 
@@ -94,44 +100,55 @@ class FilmDetailActivity : BaseActivity() {
         username = intent.getStringExtra("EXTRA_USERNAME")
         password = intent.getStringExtra("EXTRA_PASSWORD")
         streamId = intent.getIntExtra("EXTRA_STREAM_ID", -1)
-        // Listeden gelen varsayılan uzantıyı al (yedek olarak)
-        finalStreamExtension = intent.getStringExtra("EXTRA_EXTENSION") ?: "mp4"
-
-        return !(serverUrl.isNullOrEmpty() || username.isNullOrEmpty() || streamId == -1)
+        return !(serverUrl.isNullOrEmpty() || streamId == -1)
     }
 
-    private fun fetchFilmDetails() {
+    private fun fetchMovieDetails() {
         progressBar.visibility = View.VISIBLE
-        val apiService = RetrofitClient.createService(serverUrl!!)
-
         lifecycleScope.launch {
             try {
-                // 1. Filmin detaylarını API'den çek
+                val apiService = RetrofitClient.createService(serverUrl!!)
                 val response = apiService.getVodInfo(username!!, password!!, vodId = streamId)
 
                 if (response.isSuccessful && response.body() != null) {
                     val info = response.body()!!.info
                     val movieData = response.body()!!.movieData
 
-                    // Uzantıyı güncelle (Detaydan gelen daha doğrudur)
-                    if (movieData?.extension != null) {
-                        finalStreamExtension = movieData.extension
+                    currentMovieName = info?.name ?: "Film"
+                    currentMovieImage = info?.image ?: ""
+                    trailerUrl = info?.youtubeTrailer
+
+                    // --- DÜZELTME: Uzantıyı API'den alıp kaydediyoruz ---
+                    currentExtension = movieData?.extension ?: "mp4"
+
+                    // UI Doldur
+                    textTitle.text = currentMovieName
+                    textDescription.text = info?.plot ?: "Açıklama yok."
+                    textRating.text = info?.rating ?: "N/A"
+
+                    val year = info?.releaseDate ?: ""
+                    val duration = info?.duration ?: ""
+                    val genre = info?.genre ?: ""
+                    textGenre.text = "$year | $duration | $genre"
+
+                    textCast.text = info?.cast ?: "-"
+                    textDirector.text = info?.director ?: "-"
+
+                    if (trailerUrl.isNullOrEmpty()) {
+                        btnTrailer.visibility = View.GONE
+                    } else {
+                        btnTrailer.visibility = View.VISIBLE
                     }
 
-                    // Favori kaydı için bilgileri sakla
-                    if (info != null) {
-                        currentFilmName = info.name ?: "Film"
-                        currentFilmImage = info.image ?: ""
+                    if (!info?.image.isNullOrEmpty()) {
+                        Glide.with(this@FilmDetailActivity).load(info?.image).into(imgPoster)
+                        Glide.with(this@FilmDetailActivity).load(info?.image).into(imgBackdrop)
                     }
 
-                    // UI Güncelle
-                    updateUI(info)
-
-                    // 2. Veritabanından "Bu film favori mi?" diye kontrol et
-                    checkFavoriteStatus()
+                    categoryId = movieData?.categoryId ?: "0"
 
                 } else {
-                    Toast.makeText(this@FilmDetailActivity, "Detaylar alınamadı", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@FilmDetailActivity, "Bilgi alınamadı", Toast.LENGTH_SHORT).show()
                 }
                 progressBar.visibility = View.GONE
             } catch (e: Exception) {
@@ -141,35 +158,23 @@ class FilmDetailActivity : BaseActivity() {
         }
     }
 
-    private fun updateUI(info: VodInfoData?) {
-        if (info == null) return
+    private fun playMovie() {
+        val intent = Intent(this, PlayerActivity::class.java).apply {
+            putExtra("EXTRA_SERVER_URL", serverUrl)
+            putExtra("EXTRA_USERNAME", username)
+            putExtra("EXTRA_PASSWORD", password)
+            putExtra("EXTRA_STREAM_ID", streamId)
+            putExtra("EXTRA_STREAM_TYPE", "vod")
+            putExtra("EXTRA_STREAM_NAME", currentMovieName)
 
-        textTitle.text = info.name
-        textPlot.text = info.plot ?: "Özet bulunamadı."
-        textGenre.text = info.genre
-        textRating.text = if (info.rating.isNullOrEmpty()) "N/A" else "${info.rating} / 10"
-        textCast.text = info.cast ?: "-"
-        textDirector.text = info.director ?: "-"
-
-        // Resimler (Glide)
-        if (!info.image.isNullOrEmpty()) {
-            Glide.with(this).load(info.image).into(imgPoster)
-            Glide.with(this).load(info.image).into(imgBackdrop)
+            // --- DÜZELTME: Sabit "mp4" yerine gerçek uzantıyı gönderiyoruz ---
+            putExtra("EXTRA_EXTENSION", currentExtension)
         }
-
-        // Trailer Kontrolü
-        if (!info.youtubeTrailer.isNullOrEmpty()) {
-            btnTrailer.visibility = View.VISIBLE
-            btnTrailer.setOnClickListener {
-                openTrailer(info.youtubeTrailer)
-            }
-        }
+        startActivity(intent)
     }
 
-    // --- FAVORİ MANTIĞI ---
     private fun checkFavoriteStatus() {
         lifecycleScope.launch {
-            // Veritabanına sor: Bu ID'li ve 'vod' türündeki içerik favorilerde var mı?
             isFav = db.favoriteDao().isFavorite(streamId, "vod")
             updateFavIcon()
         }
@@ -178,18 +183,16 @@ class FilmDetailActivity : BaseActivity() {
     private fun toggleFavorite() {
         lifecycleScope.launch {
             if (isFav) {
-                // Zaten favoriyse, çıkar
                 db.favoriteDao().removeFavorite(streamId, "vod")
                 isFav = false
                 Toast.makeText(this@FilmDetailActivity, "Favorilerden çıkarıldı", Toast.LENGTH_SHORT).show()
             } else {
-                // Favori değilse, ekle
                 val fav = Favorite(
                     streamId = streamId,
                     streamType = "vod",
-                    name = currentFilmName,
-                    image = currentFilmImage,
-                    categoryId = "0" // Kategori bilgisi detayda gelmez, önemsiz
+                    name = currentMovieName,
+                    image = currentMovieImage,
+                    categoryId = categoryId
                 )
                 db.favoriteDao().addFavorite(fav)
                 isFav = true
@@ -200,33 +203,7 @@ class FilmDetailActivity : BaseActivity() {
     }
 
     private fun updateFavIcon() {
-        // Duruma göre ikon değiştir (Dolu kalp veya Boş kalp)
         val icon = if (isFav) R.drawable.ic_heart_filled else R.drawable.ic_heart_outline
         btnFavorite.setImageResource(icon)
-    }
-
-    // --- OYNATMA İŞLEMLERİ ---
-    private fun playMovie() {
-        val intent = Intent(this, PlayerActivity::class.java).apply {
-            putExtra("EXTRA_SERVER_URL", serverUrl)
-            putExtra("EXTRA_USERNAME", username)
-            putExtra("EXTRA_PASSWORD", password)
-            putExtra("EXTRA_STREAM_ID", streamId)
-            putExtra("EXTRA_STREAM_TYPE", "vod")
-            putExtra("EXTRA_EXTENSION", finalStreamExtension)
-        }
-        startActivity(intent)
-    }
-
-    private fun openTrailer(trailerId: String) {
-        try {
-            // YouTube uygulamasında açmayı dene
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:$trailerId"))
-            startActivity(intent)
-        } catch (e: Exception) {
-            // Uygulama yoksa tarayıcıda aç
-            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("http://www.youtube.com/watch?v=$trailerId"))
-            startActivity(webIntent)
-        }
     }
 }

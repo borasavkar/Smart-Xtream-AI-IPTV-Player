@@ -148,8 +148,8 @@ class SeriesListActivity : BaseActivity(), OnCategoryClickListener, OnSeriesClic
         categorySearchJob?.cancel()
         categorySearchJob = lifecycleScope.launch {
             if (isAuto) delay(300)
-            val q = txt.lowercase(Locale("tr"))
-            val res = withContext(Dispatchers.IO) { if (q.isEmpty()) allCategories else allCategories.filter { it.categoryName.lowercase(Locale("tr")).contains(q) } }
+            val q = txt.lowercase(Locale.forLanguageTag("tr"))
+            val res = withContext(Dispatchers.IO) { if (q.isEmpty()) allCategories else allCategories.filter { it.categoryName.lowercase(Locale.forLanguageTag("tr")).contains(q) } }
             categoryAdapter.submitList(res)
         }
     }
@@ -160,7 +160,7 @@ class SeriesListActivity : BaseActivity(), OnCategoryClickListener, OnSeriesClic
             if (isAuto) delay(500)
             val q = txt.lowercase(Locale("tr"))
             val res = withContext(Dispatchers.IO) {
-                if (q.isNotEmpty()) allSeries.filter { it.name?.lowercase(Locale("tr"))?.contains(q) == true }
+                if (q.isNotEmpty()) allSeries.filter { it.name?.lowercase(Locale.forLanguageTag("tr"))?.contains(q) == true }
                 else if (selectedCategoryId != null && selectedCategoryId != "0") allSeries.filter { it.categoryId == selectedCategoryId }
                 else allSeries
             }
@@ -168,21 +168,21 @@ class SeriesListActivity : BaseActivity(), OnCategoryClickListener, OnSeriesClic
         }
     }
 
-    override fun onCategoryClick(c: LiveCategory) {
-        selectedCategoryId = c.categoryId
+    override fun onCategoryClick(category: LiveCategory) {
+        selectedCategoryId = category.categoryId
         inputSearchSeries.text?.clear()
         lifecycleScope.launch(Dispatchers.IO) {
-            val res = if (c.categoryId == "0") allSeries else allSeries.filter { it.categoryId == c.categoryId }
+            val res = if (category.categoryId == "0") allSeries else allSeries.filter { it.categoryId == category.categoryId }
             withContext(Dispatchers.Main) { seriesAdapter.submitList(res) }
         }
     }
 
-    override fun onSeriesClick(s: SeriesStream) {
+    override fun onSeriesClick(series: SeriesStream) {
         val intent = Intent(this, SeriesDetailActivity::class.java).apply {
             putExtra("EXTRA_SERVER_URL", serverUrl)
             putExtra("EXTRA_USERNAME", username)
             putExtra("EXTRA_PASSWORD", password)
-            putExtra("EXTRA_SERIES_ID", s.seriesId)
+            putExtra("EXTRA_SERIES_ID", series.seriesId)
         }
         startActivity(intent)
     }
