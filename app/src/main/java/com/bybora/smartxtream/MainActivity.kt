@@ -22,6 +22,7 @@ import com.bybora.smartxtream.network.EpgListing
 import com.bybora.smartxtream.network.LiveStream
 import com.bybora.smartxtream.network.RetrofitClient
 import com.bybora.smartxtream.network.VodStream
+import com.bybora.smartxtream.network.SeriesStream
 import com.bybora.smartxtream.utils.ContentCache
 import com.bybora.smartxtream.utils.M3UParser
 import com.bybora.smartxtream.utils.SettingsManager
@@ -30,13 +31,14 @@ import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.util.Calendar // <-- EKLENEN KRİTİK SATIR BU
 
 class MainActivity : BaseActivity(), OnChannelClickListener {
 
@@ -45,7 +47,10 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private val interactionDao by lazy { db.interactionDao() }
     private val favoriteDao by lazy { db.favoriteDao() }
 
-    // UI Bileşenleri
+    // Yıl Ayıklama Motoru
+    private val yearRegex = "(19|20)\\d{2}".toRegex()
+
+    // UI
     private lateinit var buttonAddProfile: MaterialButton
     private lateinit var btnGlobalSettings: ImageButton
     private lateinit var btnFavorites: ImageButton
@@ -84,33 +89,25 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // --- 1. GÜVENLİK VE ABONELİK KONTROLÜ (KAPI BEKÇİSİ) ---
-        // Uygulama açılır açılmaz durumu kontrol et.
-
+        // --- GÜVENLİK VE ABONELİK KONTROLÜ ---
         val isPremium = SettingsManager.isPremiumUser(this)
 
         if (!isPremium) {
-            // Eğer Premium değilse, deneme süresine bak
             val isTrialActive = TrialManager.checkTrialStatus(this)
 
             if (!isTrialActive) {
-                // SÜRE BİTMİŞ!
                 Toast.makeText(this, "Deneme süreniz bitti. Lütfen abone olun.", Toast.LENGTH_LONG).show()
-
-                // Satın alma ekranına yönlendir
                 val intent = Intent(this, SubscriptionActivity::class.java)
                 startActivity(intent)
-                finish() // Kullanıcı geri tuşuyla bu ekrana dönemesin, uygulamayı kapat
-                return // Aşağıdaki kodları çalıştırma
+                finish()
+                return
             } else {
-                // Deneme sürüyor, kaç gün kaldı uyarısı ver (Sadece az kaldıysa)
                 val daysLeft = TrialManager.getRemainingDays(this)
                 if (daysLeft < 4) {
                     Toast.makeText(this, "Deneme Sürümü: Son $daysLeft gün!", Toast.LENGTH_LONG).show()
                 }
             }
         }
-        // -------------------------------------------------------
 
         setContentView(R.layout.activity_main)
 
@@ -348,7 +345,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         }
     }
 
-    // --- İÇERİK YÜKLEME ---
+    // --- İÇERİK YÜKLEME (Akıllı Algoritma) ---
     private fun loadAllContent(profile: Profile) {
         progressBar.visibility = View.VISIBLE
 
@@ -358,7 +355,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                 val (channels, movies, series, epgList) = withContext(Dispatchers.IO) {
                     var ch: List<LiveStream>
                     var mv: List<VodStream>
-                    var sr: List<com.bybora.smartxtream.network.SeriesStream>
+                    var sr: List<SeriesStream>
                     var ep: List<EpgListing>?
 
                     if (ContentCache.hasDataFor(profile.id)) {
@@ -401,7 +398,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     val safeMovies = movies.filter { isSafeContent(it.name) }
                     val safeSeries = series.filter { isSafeContent(it.name) }
 
-                    // --- MAÇLAR ---
+                    // --- A. MAÇLAR ---
                     val matches = if (!epgList.isNullOrEmpty()) {
                         val now = System.currentTimeMillis()
                         val calendar = Calendar.getInstance()
@@ -416,7 +413,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                                 val end = parseEpgTime(epg.end) ?: 0L
                                 val isTimeValid = (end > now) && (start < endOfDay)
                                 if (!isTimeValid) return@find false
-                                val title = epg.title.lowercase(Locale.getDefault())
+                                val title = epg.title.lowercase(Locale.forLanguageTag("tr"))
                                 val isMatch = title.contains(" vs ") || title.contains(" - ") || title.contains(" v ") || title.contains("karşılaşması") || title.contains("maçı")
                                 val isReplay = title.contains("özet") || title.contains("tekrar") || title.contains("highlight")
                                 isMatch && !isReplay
@@ -425,14 +422,14 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                         }.take(20)
                     } else emptyList()
 
-                    // --- SON EKLENENLER (Yıla göre sıralı) ---
+                    // --- B. SON EKLENENLER ---
                     val newMovies = safeMovies.sortedWith(
                         compareByDescending<VodStream> { getYearFromName(it.name) }
                             .thenByDescending { it.streamId }
                     ).take(10)
 
                     val newSeries = safeSeries.sortedWith(
-                        compareByDescending<com.bybora.smartxtream.network.SeriesStream> { getYearFromName(it.name) }
+                        compareByDescending<SeriesStream> { getYearFromName(it.name) }
                             .thenByDescending { it.seriesId }
                     ).take(5)
 
@@ -440,29 +437,73 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     newMovies.forEach { m -> latest.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0","0","Film","","",""))) }
                     newSeries.forEach { s -> val img = s.cover ?: s.streamIcon; latest.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, img, s.categoryId), EpgListing("0","0","Dizi","","",""))) }
 
-                    // --- ÖNERİLER ---
+                    // --- C. HİBRİT AKILLI ÖNERİ ---
                     val recs = mutableListOf<ChannelWithEpg>()
-                    val totalWatchTime = interactionDao.getTotalUserWatchTime() ?: 0L
+                    val myFavorites = favoriteDao.getAllFavorites().first()
 
-                    if (totalWatchTime > 300) {
-                        val dominantType = interactionDao.getDominantStreamType()
-                        val topCategory = if (dominantType != null) interactionDao.getTopCategoryForType(dominantType) else emptyList()
+                    if (myFavorites.isNotEmpty()) {
+                        val favKeywords = myFavorites
+                            .mapNotNull { it.name }
+                            .flatMap { it.split(" ", "-", ":", ".") }
+                            .filter { it.length > 3 && !it.contains("20") }
+                            .map { it.lowercase(Locale.forLanguageTag("tr")) }
+                            .toSet()
 
-                        if (topCategory.isNotEmpty()) {
-                            val catId = topCategory[0].categoryId
-                            when(dominantType) {
-                                "vod" -> safeMovies.filter { it.categoryId == catId }.shuffled().take(15).forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0","0","Film","","",""))) }
-                                "series" -> safeSeries.filter { it.categoryId == catId }.shuffled().take(15).forEach { s -> recs.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0","0","Dizi","","",""))) }
-                                else -> safeChannels.filter { it.categoryId == catId }.shuffled().take(15).forEach { c -> recs.add(ChannelWithEpg(c, null)) }
+                        val favCatIds = myFavorites.map { it.categoryId }.toSet()
+                        val favStreamIds = myFavorites.map { it.streamId }.toSet()
+
+                        val scoredMovies = safeMovies
+                            .filter { it.streamId !in favStreamIds }
+                            .map { movie ->
+                                var score = 0
+                                if (movie.categoryId in favCatIds) score += 10
+                                val movieNameLower = movie.name?.lowercase(Locale.forLanguageTag("tr")) ?: ""
+                                if (favKeywords.any { keyword -> movieNameLower.contains(keyword) }) {
+                                    score += 50
+                                }
+                                Pair(movie, score)
                             }
-                        }
+                            .filter { it.second > 0 }
+                            .sortedWith(
+                                compareByDescending<Pair<VodStream, Int>> { it.second }
+                                    .thenByDescending { getYearFromName(it.first.name) }
+                            )
+                            .take(12)
+                            .map { it.first }
+
+                        val scoredSeries = safeSeries
+                            .filter { it.seriesId !in favStreamIds }
+                            .map { series ->
+                                var score = 0
+                                if (series.categoryId in favCatIds) score += 10
+                                val nameLower = series.name?.lowercase(Locale.forLanguageTag("tr")) ?: ""
+                                if (favKeywords.any { keyword -> nameLower.contains(keyword) }) {
+                                    score += 50
+                                }
+                                Pair(series, score)
+                            }
+                            .filter { it.second > 0 }
+                            .sortedWith(
+                                compareByDescending<Pair<SeriesStream, Int>> { it.second }
+                                    .thenByDescending { getYearFromName(it.first.name) }
+                            )
+                            .take(8)
+                            .map { it.first }
+
+                        scoredMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0","0","Film","","",""))) }
+                        scoredSeries.forEach { s -> recs.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0","0","Dizi","","",""))) }
                     }
 
-                    if (recs.isEmpty()) {
-                        if (safeChannels.isNotEmpty()) recs.addAll(safeChannels.shuffled().take(5).map { ChannelWithEpg(it, null) })
-                        if (safeMovies.isNotEmpty()) recs.addAll(safeMovies.shuffled().take(5).map { ChannelWithEpg(LiveStream(it.streamId, it.name, it.streamIcon, it.categoryId), EpgListing("0","0","Film","","","")) })
-                        if (safeSeries.isNotEmpty()) recs.addAll(safeSeries.shuffled().take(5).map { ChannelWithEpg(LiveStream(it.seriesId, it.name, it.cover ?: it.streamIcon, it.categoryId), EpgListing("0","0","Dizi","","","")) })
-                        recs.shuffle()
+                    if (recs.size < 10) {
+                        val trendingMovies = safeMovies
+                            .sortedWith(compareByDescending<VodStream> { getYearFromName(it.name) }.thenByDescending { it.streamId })
+                            .take(10)
+                        val trendingSeries = safeSeries
+                            .sortedWith(compareByDescending<SeriesStream> { getYearFromName(it.name) }.thenByDescending { it.seriesId })
+                            .take(5)
+
+                        trendingMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0","0","Film","","",""))) }
+                        trendingSeries.forEach { s -> recs.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0","0","Dizi","","",""))) }
                     }
 
                     val finalRecs = if (recs.isNotEmpty()) {
@@ -517,7 +558,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
 
     private fun isSafeContent(name: String?): Boolean {
         if (name == null) return false
-        val lowerName = name.lowercase(Locale.getDefault())
+        val lowerName = name.lowercase(Locale.forLanguageTag("tr"))
         val blockedKeywords = listOf("18+", "+18", "adult", "xxx", "porn", "sex", "erotic")
         return !blockedKeywords.any { lowerName.contains(it) }
     }
@@ -548,9 +589,9 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         } catch (e: Exception) { null }
     }
 
-    override fun onChannelClick(item: ChannelWithEpg) {
-        val type = item.epgNow?.title
-        val id = item.channel.streamId
+    override fun onChannelClick(channelWithEpg: ChannelWithEpg) {
+        val type = channelWithEpg.epgNow?.title
+        val id = channelWithEpg.channel.streamId
 
         if (type == "Dizi") {
             val intent = Intent(this, SeriesDetailActivity::class.java).apply { putProfileExtras(activeProfile!!); putExtra("EXTRA_SERIES_ID", id) }
@@ -563,9 +604,9 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                 putProfileExtras(activeProfile!!)
                 putExtra("EXTRA_STREAM_ID", id)
                 putExtra("EXTRA_STREAM_TYPE", "live")
-                if (item.channel.directSource != null) putExtra("EXTRA_DIRECT_URL", item.channel.directSource)
-                putExtra("EXTRA_STREAM_NAME", item.channel.name)
-                putExtra("EXTRA_STREAM_ICON", item.channel.streamIcon)
+                if (channelWithEpg.channel.directSource != null) putExtra("EXTRA_DIRECT_URL", channelWithEpg.channel.directSource)
+                putExtra("EXTRA_STREAM_NAME", channelWithEpg.channel.name)
+                putExtra("EXTRA_STREAM_ICON", channelWithEpg.channel.streamIcon)
             }
             startActivity(intent)
         }
@@ -587,12 +628,13 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private fun openFilmList() { activeProfile?.let { val intent = Intent(this, FilmsActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
     private fun openSeriesList() { activeProfile?.let { val intent = Intent(this, SeriesListActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
     private fun showProfileWarning() { Toast.makeText(this, getString(R.string.msg_select_profile), Toast.LENGTH_SHORT).show(); showProfileSelectionDialog() }
-    private fun formatTimestamp(timestamp: String): String { return try { val expiryLong = timestamp.toLong() * 1000; val date = Date(expiryLong); val sdf = SimpleDateFormat("dd MMMM yyyy",Locale.forLanguageTag("tr")); sdf.timeZone = TimeZone.getDefault(); sdf.format(date) } catch (e: Exception) { "Geçersiz Tarih" } }
+    private fun formatTimestamp(timestamp: String): String { return try { val expiryLong = timestamp.toLong() * 1000; val date = Date(expiryLong); val sdf = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("tr")); sdf.timeZone = TimeZone.getDefault(); sdf.format(date) } catch (e: Exception) { "Geçersiz Tarih" } }
 
+    // Yıl Bulma Fonksiyonu (Önbellekli Regex Kullanıyor - Çok Hızlı)
     private fun getYearFromName(name: String?): Int {
         if (name.isNullOrEmpty()) return 0
-        val regex = "(19|20)\\d{2}".toRegex()
-        val lastMatch = regex.findAll(name).lastOrNull()
+        // yearRegex yukarıda bir kere tanımlandı, burada tekrar tekrar oluşturulmaz.
+        val lastMatch = yearRegex.findAll(name).lastOrNull()
         return lastMatch?.value?.toIntOrNull() ?: 0
     }
 }

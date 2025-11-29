@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.TrafficStats
+import android.net.Uri // <-- BU IMPORT EKLENDİ
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -12,10 +13,12 @@ import android.widget.Button
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes // <-- BU IMPORT EKLENDİ (Hatayı Çözer)
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.database.StandaloneDatabaseProvider
@@ -34,6 +37,7 @@ import androidx.media3.ui.PlayerView
 import com.bybora.smartxtream.database.AppDatabase
 import com.bybora.smartxtream.database.Favorite
 import com.bybora.smartxtream.database.Interaction
+import com.bybora.smartxtream.network.RetrofitClient
 import com.bybora.smartxtream.utils.SettingsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -41,6 +45,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayerActivity : BaseActivity() {
@@ -55,7 +60,6 @@ class PlayerActivity : BaseActivity() {
     private lateinit var btnBack: ImageButton
     private lateinit var btnFavoritePlayer: ImageButton
     private lateinit var btnNextEpisode: Button
-    private lateinit var btnSkipIntro: Button
     private lateinit var textNetworkSpeed: TextView
     private var topControls: View? = null
 
@@ -72,14 +76,20 @@ class PlayerActivity : BaseActivity() {
     private var streamName: String = ""
     private var streamIcon: String = ""
 
+    // Dizi bölüm listesi (Zincirleme oynatma için)
+    private var episodeIdList: ArrayList<Int>? = null
+
     private val db by lazy { AppDatabase.getInstance(this) }
     private var isFav = false
 
     // Resume & Progress
     private var startTime: Long = 0
     private var startPosition: Long = 0
+
+    // Hız Göstergesi İçin Değişkenler
     private var lastTotalRxBytes: Long = 0
     private var lastTimeStamp: Long = 0
+    private var smoothedSpeed: Double = 0.0
 
     private val handler = Handler(Looper.getMainLooper())
     private val progressRunnable = object : Runnable {
@@ -94,6 +104,12 @@ class PlayerActivity : BaseActivity() {
         private var simpleCache: SimpleCache? = null
     }
 
+    private val subtitlePickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.data?.let { uri -> addExternalSubtitle(uri) }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
@@ -103,7 +119,6 @@ class PlayerActivity : BaseActivity() {
 
         initViews()
         if (getIntentData()) {
-            // DİZİ KONTROLÜ: Dizi ise favori butonunu baştan gizle
             if (streamType == "series") {
                 btnFavoritePlayer.visibility = View.GONE
             }
@@ -122,7 +137,6 @@ class PlayerActivity : BaseActivity() {
         btnBack = findViewById(R.id.btn_back)
         btnFavoritePlayer = findViewById(R.id.btn_favorite_player)
         btnNextEpisode = findViewById(R.id.btn_next_episode)
-        btnSkipIntro = findViewById(R.id.btn_skip_intro)
         textNetworkSpeed = findViewById(R.id.text_network_speed)
 
         btnBack.setOnClickListener { finish() }
@@ -130,7 +144,6 @@ class PlayerActivity : BaseActivity() {
         btnSubtitle.setOnClickListener { showSubtitleDialog() }
         btnFavoritePlayer.setOnClickListener { toggleFavorite() }
         btnNextEpisode.setOnClickListener { playNextEpisode() }
-        btnSkipIntro.setOnClickListener { skipIntro() }
 
         playerView?.setControllerVisibilityListener(object : PlayerView.ControllerVisibilityListener {
             override fun onVisibilityChanged(visibility: Int) {
@@ -166,9 +179,25 @@ class PlayerActivity : BaseActivity() {
         fileExtension = intent.getStringExtra("EXTRA_EXTENSION") ?: "mp4"
         categoryId = intent.getStringExtra("EXTRA_CATEGORY_ID") ?: "0"
         directUrl = intent.getStringExtra("EXTRA_DIRECT_URL")
-        nextEpisodeId = intent.getIntExtra("EXTRA_NEXT_EPISODE_ID", -1)
+
         streamName = intent.getStringExtra("EXTRA_STREAM_NAME") ?: "Kanal $streamId"
         streamIcon = intent.getStringExtra("EXTRA_STREAM_ICON") ?: ""
+
+        // --- BÖLÜM LİSTESİ VE SONRAKİ BÖLÜM MANTIĞI ---
+        episodeIdList = intent.getIntegerArrayListExtra("EXTRA_EPISODE_LIST")
+
+        // Eğer liste geldiyse, sonraki bölümü listeden bul
+        if (episodeIdList != null && streamId != -1) {
+            val currentIndex = episodeIdList!!.indexOf(streamId)
+            if (currentIndex != -1 && currentIndex < episodeIdList!!.size - 1) {
+                nextEpisodeId = episodeIdList!![currentIndex + 1]
+            } else {
+                nextEpisodeId = -1 // Son bölüm
+            }
+        } else {
+            // Liste yoksa eski yöntem (Intent'ten gelen)
+            nextEpisodeId = intent.getIntExtra("EXTRA_NEXT_EPISODE_ID", -1)
+        }
 
         if (directUrl != null) return true
         return !(serverUrl.isNullOrEmpty() || username.isNullOrEmpty() || streamId == -1)
@@ -195,12 +224,17 @@ class PlayerActivity : BaseActivity() {
                     directUrl!!
                 } else {
                     val cleanUrl = serverUrl!!.trimEnd('/')
-                    val safeUsername = java.net.URLEncoder.encode(username, "UTF-8")
-                    val safePassword = java.net.URLEncoder.encode(password, "UTF-8")
-                    when (streamType) {
-                        "vod" -> "$cleanUrl/movie/$safeUsername/$safePassword/$streamId.$fileExtension"
-                        "series" -> "$cleanUrl/series/$safeUsername/$safePassword/$streamId.$fileExtension"
-                        else -> "$cleanUrl/live/$safeUsername/$safePassword/$streamId.m3u8"
+                    val safeUsername = if(!username.isNullOrEmpty()) java.net.URLEncoder.encode(username, "UTF-8") else ""
+                    val safePassword = if(!password.isNullOrEmpty()) java.net.URLEncoder.encode(password, "UTF-8") else ""
+
+                    if (safeUsername.isEmpty() || safePassword.isEmpty()) {
+                        "$cleanUrl/live/$streamId.m3u8"
+                    } else {
+                        when (streamType) {
+                            "vod" -> "$cleanUrl/movie/$safeUsername/$safePassword/$streamId.$fileExtension"
+                            "series" -> "$cleanUrl/series/$safeUsername/$safePassword/$streamId.$fileExtension"
+                            else -> "$cleanUrl/live/$safeUsername/$safePassword/$streamId.m3u8"
+                        }
                     }
                 }
 
@@ -213,8 +247,9 @@ class PlayerActivity : BaseActivity() {
                     trackSelector!!.parameters = parametersBuilder.build()
                 } catch (e: Exception) {}
 
-                // --- 1. GÜÇLENDİRİLMİŞ BAĞLANTI (OkHttp) ---
-                val okHttpClient = OkHttpClient.Builder()
+                // --- 1. TURBO MOTOR (RetrofitClient'tan) ---
+                val baseClient = RetrofitClient.okHttpClient
+                val okHttpClient = baseClient.newBuilder()
                     .connectTimeout(20, TimeUnit.SECONDS)
                     .readTimeout(20, TimeUnit.SECONDS)
                     .followRedirects(true)
@@ -230,18 +265,16 @@ class PlayerActivity : BaseActivity() {
                     okHttpDataSourceFactory
                 }
 
-                // --- 2. RENDERER ---
                 val renderersFactory = DefaultRenderersFactory(this)
                     .setEnableDecoderFallback(true)
                     .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
 
-                // --- 3. STABİLİTE BUFFER AYARLARI ---
+                // --- Buffer Ayarları (Daha Geniş) ---
                 val loadControl = DefaultLoadControl.Builder()
-                    .setBufferDurationsMs(15_000, 50_000, 2_500, 5_000)
+                    .setBufferDurationsMs(25_000, 120_000, 2_500, 5_000)
                     .setPrioritizeTimeOverSizeThresholds(true)
                     .build()
 
-                // --- 4. MEDIA SOURCE FACTORY ---
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
                     .setLiveTargetOffsetMs(10_000)
 
@@ -337,12 +370,21 @@ class PlayerActivity : BaseActivity() {
 
     private fun updateNetworkSpeed() {
         val currentRxBytes = TrafficStats.getUidRxBytes(applicationInfo.uid)
+        if (currentRxBytes == TrafficStats.UNSUPPORTED.toLong()) return
+
         val currentTime = System.currentTimeMillis()
         val timeDiff = currentTime - lastTimeStamp
+
         if (timeDiff >= 1000) {
-            val bytesDiff = currentRxBytes - lastTotalRxBytes
-            val speed = if (bytesDiff > 0) (bytesDiff * 1000) / timeDiff else 0
-            val speedText = if (speed >= 1024 * 1024) String.format("%.1f MB/s", speed / (1024f * 1024f)) else String.format("%d KB/s", speed / 1024)
+            val bytesDiff = max(0L, currentRxBytes - lastTotalRxBytes)
+            val currentInstantSpeed = (bytesDiff * 1000) / timeDiff
+            smoothedSpeed = (smoothedSpeed * 0.6) + (currentInstantSpeed * 0.4)
+
+            val speedText = if (smoothedSpeed >= 1024 * 1024) {
+                String.format("%.1f MB/s", smoothedSpeed / (1024f * 1024f))
+            } else {
+                String.format("%d KB/s", (smoothedSpeed / 1024).toLong())
+            }
             textNetworkSpeed.text = speedText
             lastTotalRxBytes = currentRxBytes
             lastTimeStamp = currentTime
@@ -354,23 +396,10 @@ class PlayerActivity : BaseActivity() {
         val current = player!!.currentPosition
         val duration = player!!.duration
 
-        if (streamType == "series" && current > 10000 && current < 300000) {
-            if (btnSkipIntro.visibility != View.VISIBLE) btnSkipIntro.visibility = View.VISIBLE
-        } else {
-            if (btnSkipIntro.visibility == View.VISIBLE) btnSkipIntro.visibility = View.GONE
-        }
-
-        if (nextEpisodeId != -1 && duration > 0 && (duration - current) < 45000) {
+        if (nextEpisodeId != -1 && duration > 0 && (duration - current) < 45_000) {
             if (btnNextEpisode.visibility != View.VISIBLE) btnNextEpisode.visibility = View.VISIBLE
         } else {
             if (btnNextEpisode.visibility == View.VISIBLE) btnNextEpisode.visibility = View.GONE
-        }
-    }
-
-    private fun skipIntro() {
-        player?.let {
-            it.seekTo(it.currentPosition + 85000)
-            Toast.makeText(this, "İntro atlandı", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -384,6 +413,11 @@ class PlayerActivity : BaseActivity() {
             putExtra("EXTRA_STREAM_TYPE", streamType)
             putExtra("EXTRA_EXTENSION", fileExtension)
             putExtra("EXTRA_CATEGORY_ID", categoryId)
+
+            // Listeyi bir sonraki bölüme aktar (Zinciri Korma)
+            if (episodeIdList != null) {
+                putIntegerArrayListExtra("EXTRA_EPISODE_LIST", episodeIdList)
+            }
         }
         startActivity(intent)
         finish()
@@ -455,21 +489,23 @@ class PlayerActivity : BaseActivity() {
             }.show()
     }
 
-    // --- SADELEŞTİRİLMİŞ ALTYAZI MENÜSÜ ---
-    // Sadece mevcut kanalları listeler, "Dosya Aç" veya "İnternet" YOK.
     private fun showSubtitleDialog() {
         val tracks = getTracksByType(C.TRACK_TYPE_TEXT)
         val items = tracks.map { it.name }.toMutableList()
         items.add(0, "Kapat")
+        items.add("📂 Dosyadan Yükle...")
 
         AlertDialog.Builder(this)
             .setTitle("Altyazı Seç")
             .setItems(items.toTypedArray()) { _, w ->
+                val trackCount = tracks.size
                 if (w == 0) {
                     disableTrack(C.TRACK_TYPE_TEXT)
-                } else {
+                } else if (w <= trackCount) {
                     val t = tracks[w - 1]
                     selectTrack(C.TRACK_TYPE_TEXT, t.groupIndex, t.trackIndex, t.rendererIndex)
+                } else {
+                    openFilePicker()
                 }
             }.show()
     }
@@ -524,6 +560,31 @@ class PlayerActivity : BaseActivity() {
     private fun disableTrack(type: Int) {
         trackSelector?.parameters = trackSelector!!.buildUponParameters().setTrackTypeDisabled(type, true).build()
         Toast.makeText(this, "Kapatıldı", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun openFilePicker() {
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+        subtitlePickerLauncher.launch(i)
+    }
+
+    private fun addExternalSubtitle(uri: Uri) {
+        if(player==null) return
+        val media = player?.currentMediaItem ?: return
+        val sub = MediaItem.SubtitleConfiguration.Builder(uri)
+            .setMimeType(MimeTypes.APPLICATION_SUBRIP) // Hata buradaydı, MimeTypes import edildi.
+            .setLanguage("tr")
+            .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+            .build()
+        val newMedia = media.buildUpon().setSubtitleConfigurations(listOf(sub)).build()
+        val pos = player?.currentPosition ?: 0
+        player?.setMediaItem(newMedia)
+        player?.seekTo(pos)
+        player?.prepare()
+        player?.play()
+        Toast.makeText(this, "Yüklendi", Toast.LENGTH_SHORT).show()
     }
 
     data class TrackInfo(val name: String, val groupIndex: Int, val trackIndex: Int, val rendererIndex: Int)

@@ -130,4 +130,12 @@
     <string name="title_matches">Matchs du jour</string>
     <string name="title_latest">Derniers ajouts</string>
     <string name="error_stream_not_found">Flux introuvable ou hors ligne.</string>
+    <string name="TV">TV</string>
+    <string name="annual_subscription_with_advantage">Abonnement Annuel (Avantageux)</string>
+    <string name="lifeTime_subscription">Accès à Vie</string>
+    <string name="tria_exp_text">Votre période d\'essai est terminée. Veuillez vous abonner pour continuer.</string>
+    <string name="monthly_subscription">Abonnement Mensuel</string>
+    <string name="open_premium_properties">Débloquer les Fonctions Premium</string>
+    <string name="premium">Premium</string>
+    <string name="close">Fermer</string>
 </resources>

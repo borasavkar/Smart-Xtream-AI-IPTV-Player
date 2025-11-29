@@ -131,4 +131,11 @@
     <string name="title_latest">Recently Added</string>
     <string name="error_stream_not_found">Stream not found or offline.</string>
     <string name="TV">TV</string>
+    <string name="annual_subscription_with_advantage">Yearly Subscription (Best Value)</string>
+    <string name="lifeTime_subscription">Lifetime Access</string>
+    <string name="tria_exp_text">Your trial has expired. Please subscribe to continue.</string>
+    <string name="monthly_subscription">Monthly Subscription</string>
+    <string name="open_premium_properties">Unlock Premium Features</string>
+    <string name="premium">Premium</string>
+    <string name="close">Close</string>
 </resources>

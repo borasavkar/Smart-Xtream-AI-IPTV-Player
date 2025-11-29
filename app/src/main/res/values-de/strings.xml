@@ -130,4 +130,12 @@
     <string name="title_matches">Spiele von heute</string>
     <string name="title_latest">Zuletzt hinzugefügt</string>
     <string name="error_stream_not_found">Stream nicht gefunden oder offline.</string>
+    <string name="TV">TV</string>
+    <string name="annual_subscription_with_advantage">Jahresabo (Vorteilhaft)</string>
+    <string name="lifeTime_subscription">Lebenslanger Zugriff</string>
+    <string name="tria_exp_text">Ihre Testphase ist abgelaufen. Bitte abonnieren Sie, um fortzufahren.</string>
+    <string name="monthly_subscription">Monatsabo</string>
+    <string name="open_premium_properties">Premium-Funktionen freischalten</string>
+    <string name="premium">Premium</string>
+    <string name="close">Schließen</string>
 </resources>

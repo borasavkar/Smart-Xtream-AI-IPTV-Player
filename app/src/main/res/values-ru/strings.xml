@@ -130,4 +130,12 @@
     <string name="title_matches">Матчи сегодня</string>
     <string name="title_latest">Недавно добавленные</string>
     <string name="error_stream_not_found">Поток не найден или офлайн.</string>
+    <string name="TV">ТВ</string>
+    <string name="annual_subscription_with_advantage">Годовая подписка (Выгодно)</string>
+    <string name="lifeTime_subscription">Пожизненный доступ</string>
+    <string name="tria_exp_text">Срок пробной версии истек. Пожалуйста, подпишитесь, чтобы продолжить.</string>
+    <string name="monthly_subscription">Ежемесячная подписка</string>
+    <string name="open_premium_properties">Открыть Premium возможности</string>
+    <string name="premium">Премиум</string>
+    <string name="close">Закрыть</string>
 </resources>

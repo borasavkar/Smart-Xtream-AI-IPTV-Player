@@ -184,14 +184,10 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
     override fun onEpisodeClick(episode: Episode) {
         val streamId = episode.id.toIntOrNull() ?: return
 
-        // Sonraki bölümü bulma mantığı
+        // --- YENİ MANTIK: Tüm bölüm listesini paketle ---
+        // Listeyi Player'a veriyoruz ki sonraki bölümleri kendisi bulabilsin.
         val currentList = episodeAdapter.currentList
-        val currentIndex = currentList.indexOf(episode)
-        var nextEpisodeId = -1
-        if (currentIndex != -1 && currentIndex < currentList.size - 1) {
-            val nextEpisode = currentList[currentIndex + 1]
-            nextEpisodeId = nextEpisode.id.toIntOrNull() ?: -1
-        }
+        val episodeIds = ArrayList(currentList.mapNotNull { it.id.toIntOrNull() })
 
         val intent = Intent(this, PlayerActivity::class.java).apply {
             putExtra("EXTRA_SERVER_URL", serverUrl)
@@ -201,7 +197,9 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
             putExtra("EXTRA_STREAM_TYPE", "series")
             putExtra("EXTRA_EXTENSION", episode.fileExtension ?: "mp4")
             putExtra("EXTRA_CATEGORY_ID", "0")
-            putExtra("EXTRA_NEXT_EPISODE_ID", nextEpisodeId)
+
+            // Listeyi gönderiyoruz (Bu satır yeni)
+            putIntegerArrayListExtra("EXTRA_EPISODE_LIST", episodeIds)
         }
         startActivity(intent)
     }

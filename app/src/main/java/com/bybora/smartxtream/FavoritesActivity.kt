@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager // <-- Grid Düzeni için
 import androidx.recyclerview.widget.RecyclerView
 import com.bybora.smartxtream.adapter.ChannelAdapter
 import com.bybora.smartxtream.adapter.OnChannelClickListener
@@ -37,8 +37,13 @@ class FavoritesActivity : BaseActivity(), OnChannelClickListener {
         findViewById<View>(R.id.btn_back).setOnClickListener { finish() }
 
         recyclerFavorites = findViewById(R.id.recycler_favorites)
-        recyclerFavorites.layoutManager = LinearLayoutManager(this)
-        adapter = ChannelAdapter(this)
+
+        // --- DÜZELTME 1: Izgara Görünümü (Yan yana 3 poster) ---
+        recyclerFavorites.layoutManager = GridLayoutManager(this, 3)
+
+        // --- DÜZELTME 2: Film Kartı Tasarımı Kullan (Resimli) ---
+        adapter = ChannelAdapter(this, R.layout.item_movie_card)
+
         recyclerFavorites.adapter = adapter
 
         loadFavorites()
@@ -47,15 +52,13 @@ class FavoritesActivity : BaseActivity(), OnChannelClickListener {
     private fun loadFavorites() {
         lifecycleScope.launch {
             db.favoriteDao().getAllFavorites().collectLatest { favList ->
-                // Favorileri ChannelWithEpg formatına çeviriyoruz ki Adapter kullanabilelim
                 val list = favList.map { fav ->
                     val stream = LiveStream(
                         streamId = fav.streamId,
                         name = fav.name,
-                        streamIcon = fav.image,
+                        streamIcon = fav.image, // Resim burada yükleniyor
                         categoryId = fav.categoryId
                     )
-                    // Tür bilgisini EPG başlığına gizliyoruz (Hack)
                     val typeLabel = when(fav.streamType) {
                         "vod" -> "Film"
                         "series" -> "Dizi"
@@ -70,7 +73,6 @@ class FavoritesActivity : BaseActivity(), OnChannelClickListener {
     }
 
     override fun onChannelClick(channelWithEpg: ChannelWithEpg) {
-        // Tıklanınca ne olduğunu (Film/Dizi/Canlı) anlayıp oraya git
         val typeLabel = channelWithEpg.epgNow?.title ?: "live"
         val type = when(typeLabel) {
             "Film" -> "vod"
@@ -101,6 +103,8 @@ class FavoritesActivity : BaseActivity(), OnChannelClickListener {
                 putExtra("EXTRA_PASSWORD", password)
                 putExtra("EXTRA_STREAM_ID", channelWithEpg.channel.streamId)
                 putExtra("EXTRA_STREAM_TYPE", "live")
+                putExtra("EXTRA_STREAM_NAME", channelWithEpg.channel.name)
+                putExtra("EXTRA_STREAM_ICON", channelWithEpg.channel.streamIcon)
             }
             startActivity(intent)
         }

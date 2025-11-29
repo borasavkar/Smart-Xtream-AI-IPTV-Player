@@ -167,7 +167,9 @@ class FilmDetailActivity : BaseActivity() {
             putExtra("EXTRA_STREAM_TYPE", "vod")
             putExtra("EXTRA_STREAM_NAME", currentMovieName)
 
-            // --- DÜZELTME: Sabit "mp4" yerine gerçek uzantıyı gönderiyoruz ---
+            // --- EKSİK OLAN BU SATIRI EKLEYİN ---
+            putExtra("EXTRA_STREAM_ICON", currentMovieImage)
+
             putExtra("EXTRA_EXTENSION", currentExtension)
         }
         startActivity(intent)
