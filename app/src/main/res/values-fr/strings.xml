@@ -117,7 +117,7 @@
     <string name="movie_header">Titre du film</string>
     <string name="imdb_rating">8.5 / 10</string>
     <string name="action_adventure">Action, Aventure</string>
-    <string name="watch_now">⏵ REGARDER MAINTENANT</string>
+    <string name="watch_now">REGARDER MAINTENANT</string>
     <string name="trailer">BANDE-ANNONCE</string>
     <string name="movie_plot_loading">Chargement de l\'intrigue…</string>
     <string name="director">RÉALISATEUR</string>

@@ -117,7 +117,7 @@
     <string name="movie_header">Movie Title</string>
     <string name="imdb_rating">8.5 / 10</string>
     <string name="action_adventure">Action, Adventure</string>
-    <string name="watch_now">⏵ WATCH NOW</string>
+    <string name="watch_now">WATCH NOW</string>
     <string name="trailer">TRAILER</string>
     <string name="movie_plot_loading">Loading movie plot…</string>
     <string name="director">DIRECTOR</string>

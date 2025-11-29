@@ -4,7 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.TrafficStats
-import android.net.Uri // <-- BU IMPORT EKLENDİ
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -18,7 +18,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes // <-- BU IMPORT EKLENDİ (Hatayı Çözer)
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.database.StandaloneDatabaseProvider
@@ -46,6 +46,8 @@ import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlin.math.max
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.common.VideoSize
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayerActivity : BaseActivity() {
@@ -76,7 +78,6 @@ class PlayerActivity : BaseActivity() {
     private var streamName: String = ""
     private var streamIcon: String = ""
 
-    // Dizi bölüm listesi (Zincirleme oynatma için)
     private var episodeIdList: ArrayList<Int>? = null
 
     private val db by lazy { AppDatabase.getInstance(this) }
@@ -86,7 +87,7 @@ class PlayerActivity : BaseActivity() {
     private var startTime: Long = 0
     private var startPosition: Long = 0
 
-    // Hız Göstergesi İçin Değişkenler
+    // Hız Göstergesi
     private var lastTotalRxBytes: Long = 0
     private var lastTimeStamp: Long = 0
     private var smoothedSpeed: Double = 0.0
@@ -183,19 +184,16 @@ class PlayerActivity : BaseActivity() {
         streamName = intent.getStringExtra("EXTRA_STREAM_NAME") ?: "Kanal $streamId"
         streamIcon = intent.getStringExtra("EXTRA_STREAM_ICON") ?: ""
 
-        // --- BÖLÜM LİSTESİ VE SONRAKİ BÖLÜM MANTIĞI ---
         episodeIdList = intent.getIntegerArrayListExtra("EXTRA_EPISODE_LIST")
 
-        // Eğer liste geldiyse, sonraki bölümü listeden bul
         if (episodeIdList != null && streamId != -1) {
             val currentIndex = episodeIdList!!.indexOf(streamId)
             if (currentIndex != -1 && currentIndex < episodeIdList!!.size - 1) {
                 nextEpisodeId = episodeIdList!![currentIndex + 1]
             } else {
-                nextEpisodeId = -1 // Son bölüm
+                nextEpisodeId = -1
             }
         } else {
-            // Liste yoksa eski yöntem (Intent'ten gelen)
             nextEpisodeId = intent.getIntExtra("EXTRA_NEXT_EPISODE_ID", -1)
         }
 
@@ -241,17 +239,24 @@ class PlayerActivity : BaseActivity() {
                 trackSelector = DefaultTrackSelector(this)
                 applyGlobalSettings(trackSelector!!)
 
+                // --- DÜZELTME: Tunneling'i Şartlı Aç ---
+                // Eski kodunuzu silin ve yerine bunu yazın:
                 try {
                     val parametersBuilder = trackSelector!!.buildUponParameters()
-                    parametersBuilder.setTunnelingEnabled(true)
+                    // Sadece Android 9+ ve uyumlu cihazlarda aç
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                        parametersBuilder.setTunnelingEnabled(true)
+                    }
                     trackSelector!!.parameters = parametersBuilder.build()
-                } catch (e: Exception) {}
+                } catch (e: Exception) {
+                    android.util.Log.e("PlayerActivity", "Tunneling ayarlanamadı", e)
+                }
+                // --- DÜZELTME SONU ---
 
-                // --- 1. TURBO MOTOR (RetrofitClient'tan) ---
                 val baseClient = RetrofitClient.okHttpClient
                 val okHttpClient = baseClient.newBuilder()
-                    .connectTimeout(20, TimeUnit.SECONDS)
-                    .readTimeout(20, TimeUnit.SECONDS)
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
                     .followRedirects(true)
                     .followSslRedirects(true)
                     .build()
@@ -268,11 +273,19 @@ class PlayerActivity : BaseActivity() {
                 val renderersFactory = DefaultRenderersFactory(this)
                     .setEnableDecoderFallback(true)
                     .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+                val can4K = canHandle4K()
+                android.util.Log.d("PlayerActivity", "4K desteği: $can4K")
 
-                // --- Buffer Ayarları (Daha Geniş) ---
                 val loadControl = DefaultLoadControl.Builder()
-                    .setBufferDurationsMs(25_000, 120_000, 2_500, 5_000)
+                    .setBufferDurationsMs(
+                        if (can4K) 20_000 else 15_000,  // min buffer
+                        if (can4K) 80_000 else 50_000,  // max buffer
+                        2_000,                           // playback buffer
+                        3_000                            // rebuffer
+                    )
                     .setPrioritizeTimeOverSizeThresholds(true)
+                    .setTargetBufferBytes(if (can4K) 30_000_000 else 15_000_000)
+                    .setBackBuffer(10_000, true) // Eski buffer'ı temizle
                     .build()
 
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
@@ -325,6 +338,35 @@ class PlayerActivity : BaseActivity() {
                 player?.play()
                 startTime = System.currentTimeMillis()
 
+                player?.addAnalyticsListener(object : AnalyticsListener {
+                    override fun onVideoSizeChanged(eventTime: AnalyticsListener.EventTime, videoSize: VideoSize) {
+                        android.util.Log.d("PlayerActivity", "Video boyutu: ${videoSize.width}x${videoSize.height}")
+
+                        // 4K kontrolü
+                        if (videoSize.width >= 3840 && !canHandle4K()) {
+                            android.util.Log.w("PlayerActivity", "UYARI: 4K video oynatılıyor ama cihaz desteklemiyor!")
+                            runOnUiThread {
+                                Toast.makeText(this@PlayerActivity,
+                                    "4K video algılandı. Sorun yaşarsanız kaliteyi düşürün.",
+                                    Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+
+                    override fun onVideoCodecError(eventTime: AnalyticsListener.EventTime, videoCodecError: Exception) {
+                        android.util.Log.e("PlayerActivity", "Codec hatası:", videoCodecError)
+                    }
+
+                    override fun onVideoDecoderInitialized(
+                        eventTime: AnalyticsListener.EventTime,
+                        decoderName: String,
+                        initializedTimestampMs: Long,
+                        initializationDurationMs: Long
+                    ) {
+                        android.util.Log.d("PlayerActivity", "Decoder: $decoderName, Başlatma süresi: ${initializationDurationMs}ms")
+                    }
+                })
+
             } catch (e: Exception) {
                 showDetailedErrorDialog("Başlatma Hatası", e.message ?: "Bilinmeyen hata")
             }
@@ -345,16 +387,98 @@ class PlayerActivity : BaseActivity() {
 
     private fun applyGlobalSettings(selector: DefaultTrackSelector) {
         val parametersBuilder = selector.buildUponParameters()
-        parametersBuilder.setMaxVideoSize(Integer.MAX_VALUE, Integer.MAX_VALUE).setMaxVideoBitrate(Integer.MAX_VALUE)
+
+        // Cihaz yeteneklerini kontrol et
+        val (maxWidth, maxHeight) = getMaxSupportedResolution()
+
+        android.util.Log.d("PlayerActivity", "Max desteklenen çözünürlük: ${maxWidth}x${maxHeight}")
+
+        parametersBuilder.setMaxVideoSize(maxWidth, maxHeight)
+
+        // Bitrate limiti
+        val maxBitrate = when {
+            maxWidth >= 3840 -> 50_000_000  // 4K
+            maxWidth >= 2560 -> 25_000_000  // 2K
+            else -> 15_000_000              // Full HD
+        }
+        parametersBuilder.setMaxVideoBitrate(maxBitrate)
+
+        // Adaptif streaming
+        parametersBuilder.setAllowVideoNonSeamlessAdaptiveness(true)
+        parametersBuilder.setAllowVideoMixedMimeTypeAdaptiveness(false) // HDR/SDR karışımını engelle
+        parametersBuilder.setAllowAudioMixedMimeTypeAdaptiveness(true)
+
+        // Dil ayarları
         val audioLang = SettingsManager.getAudioLang(this)
         val subLang = SettingsManager.getSubtitleLang(this)
         parametersBuilder.setPreferredAudioLanguage(audioLang)
         parametersBuilder.setPreferredTextLanguage(subLang)
         parametersBuilder.setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
         parametersBuilder.setSelectUndeterminedTextLanguage(true)
+
         selector.parameters = parametersBuilder.build()
     }
+    // Yeni fonksiyon ekleyin
+    private fun canHandle4K(): Boolean {
+        return try {
+            val codecList = android.media.MediaCodecList(android.media.MediaCodecList.ALL_CODECS)
+            val capabilities = codecList.codecInfos
+                .filter { !it.isEncoder } // isDecoder yerine !isEncoder
+                .flatMap { codecInfo ->
+                    codecInfo.supportedTypes
+                        .filter { it.equals("video/hevc", ignoreCase = true) || it.equals("video/avc", ignoreCase = true) }
+                        .mapNotNull { type ->
+                            try {
+                                codecInfo.getCapabilitiesForType(type)
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                }
 
+            capabilities.any { cap ->
+                cap.videoCapabilities?.let { videoCap ->
+                    videoCap.isSizeSupported(3840, 2160) &&
+                            videoCap.bitrateRange.upper >= 40_000_000
+                } ?: false
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("PlayerActivity", "4K kontrol hatası", e)
+            false
+        }
+    }
+
+    private fun getMaxSupportedResolution(): Pair<Int, Int> {
+        return try {
+            val codecList = android.media.MediaCodecList(android.media.MediaCodecList.ALL_CODECS)
+            var maxWidth = 1920
+            var maxHeight = 1080
+
+            codecList.codecInfos
+                .filter { !it.isEncoder } // isDecoder yerine !isEncoder
+                .forEach { codecInfo ->
+                    codecInfo.supportedTypes
+                        .filter { it.startsWith("video/") }
+                        .forEach { type ->
+                            try {
+                                val cap = codecInfo.getCapabilitiesForType(type)
+                                cap.videoCapabilities?.let { videoCap ->
+                                    if (videoCap.supportedWidths.upper > maxWidth) {
+                                        maxWidth = videoCap.supportedWidths.upper
+                                        maxHeight = videoCap.supportedHeights.upper
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                // Ignore
+                            }
+                        }
+                }
+
+            Pair(maxWidth, maxHeight)
+        } catch (e: Exception) {
+            Pair(1920, 1080)
+        }
+    }
     private fun smartSelectSubtitle() {
         val preferredLang = SettingsManager.getSubtitleLang(this)
         val tracks = getTracksByType(C.TRACK_TYPE_TEXT)
@@ -414,7 +538,6 @@ class PlayerActivity : BaseActivity() {
             putExtra("EXTRA_EXTENSION", fileExtension)
             putExtra("EXTRA_CATEGORY_ID", categoryId)
 
-            // Listeyi bir sonraki bölüme aktar (Zinciri Korma)
             if (episodeIdList != null) {
                 putIntegerArrayListExtra("EXTRA_EPISODE_LIST", episodeIdList)
             }
@@ -456,17 +579,79 @@ class PlayerActivity : BaseActivity() {
         val title: String
         val msg: String
         val cause = error.cause
-        if (cause is HttpDataSource.InvalidResponseCodeException) {
-            title = "Sunucu Hatası (${cause.responseCode})"
-            msg = when(cause.responseCode){404->"Kaynak bulunamadı.";403->"Erişim reddedildi.";else->"Sunucu hatası."}
-        } else if (error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED) {
-            title = "İnternet Yok"
-            msg = "Bağlantı hatası."
-        } else {
-            title = "Hata"
-            msg = error.message ?: ""
+
+        android.util.Log.e("PlayerActivity", "Player error: ${error.errorCode}", error)
+
+        when {
+            error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
+                    error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED -> {
+                title = "Codec Hatası"
+                msg = "Cihazınız bu video kalitesini desteklemiyor.\n\n" +
+                        "Çözüm: Ayarlar > Görüntü Kalitesi'nden daha düşük bir çözünürlük seçin.\n\n" +
+                        "Hata kodu: 0x${Integer.toHexString(error.errorCode)}"
+
+                // Otomatik düşük kaliteye geç
+                lifecycleScope.launch {
+                    kotlinx.coroutines.delay(2000)
+                    tryLowerQuality()
+                }
+            }
+            cause is HttpDataSource.InvalidResponseCodeException -> {
+                title = "Sunucu Hatası (${cause.responseCode})"
+                msg = when(cause.responseCode) {
+                    404 -> "Kaynak bulunamadı."
+                    403 -> "Erişim reddedildi."
+                    else -> "Sunucu hatası."
+                }
+            }
+            error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> {
+                title = "İnternet Yok"
+                msg = "Bağlantı hatası."
+            }
+            else -> {
+                title = "Oynatma Hatası"
+                msg = "Hata: ${error.message ?: "Bilinmeyen"}\n" +
+                        "Kod: 0x${Integer.toHexString(error.errorCode)}"
+            }
         }
+
         showDetailedErrorDialog(title, msg)
+    }
+
+    private fun tryLowerQuality() {
+        try {
+            val tracks = getTracksByType(C.TRACK_TYPE_VIDEO)
+            if (tracks.isEmpty()) return
+
+            // Çözünürlükleri parse et ve sırala
+            val sortedTracks = tracks.mapNotNull { track ->
+                val parts = track.name.split("x")
+                if (parts.size == 2) {
+                    val width = parts[0].toIntOrNull() ?: return@mapNotNull null
+                    val height = parts[1].toIntOrNull() ?: return@mapNotNull null
+                    Triple(width * height, track, "${width}x${height}")
+                } else null
+            }.sortedBy { it.first }
+
+            // En düşük kaliteyi seç (Full HD veya altı)
+            val targetTrack = sortedTracks.firstOrNull { it.first <= 1920 * 1080 }
+                ?: sortedTracks.firstOrNull()
+
+            targetTrack?.let {
+                android.util.Log.d("PlayerActivity", "Düşük kaliteye geçiliyor: ${it.third}")
+                selectTrack(C.TRACK_TYPE_VIDEO, it.second.groupIndex, it.second.trackIndex, it.second.rendererIndex)
+
+                // Player'ı yeniden başlat
+                val currentPos = player?.currentPosition ?: 0
+                player?.seekTo(currentPos)
+                player?.prepare()
+                player?.play()
+
+                Toast.makeText(this, "Kalite düşürüldü: ${it.third}", Toast.LENGTH_LONG).show()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("PlayerActivity", "Kalite düşürme hatası", e)
+        }
     }
 
     private fun showDetailedErrorDialog(title: String, message: String) {
@@ -574,7 +759,7 @@ class PlayerActivity : BaseActivity() {
         if(player==null) return
         val media = player?.currentMediaItem ?: return
         val sub = MediaItem.SubtitleConfiguration.Builder(uri)
-            .setMimeType(MimeTypes.APPLICATION_SUBRIP) // Hata buradaydı, MimeTypes import edildi.
+            .setMimeType(MimeTypes.APPLICATION_SUBRIP)
             .setLanguage("tr")
             .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
             .build()
