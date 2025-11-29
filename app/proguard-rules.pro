@@ -19,3 +19,22 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# --- Smart Xtream AI IPTV Rules ---
+
+# Ağ Modellerini Koruma (Retrofit/Moshi için şart)
+-keep class com.bybora.smartxtream.network.** { *; }
+-keep class com.bybora.smartxtream.database.** { *; }
+
+# Glide (Resim Yükleyici)
+-keep public class * implements com.bumptech.glide.module.AppGlideModule
+-keep public class * implements com.bumptech.glide.module.LibraryGlideModule
+-keep class com.bumptech.glide.** { *; }
+
+# OkHttp ve Retrofit Genel Kuralları
+-dontwarn okhttp3.**
+-dontwarn retrofit2.**
+-keepattributes Signature
+-keepattributes *Annotation*
+
+# Room Veritabanı
+-dontwarn androidx.room.paging.**

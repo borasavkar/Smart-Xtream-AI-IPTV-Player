@@ -21,7 +21,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Kodları karart ve küçült (AÇIK)
+            isMinifyEnabled = true
+            // Kullanılmayan kaynakları (resim/xml) sil (AÇIK)
+            isShrinkResources = true
+
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

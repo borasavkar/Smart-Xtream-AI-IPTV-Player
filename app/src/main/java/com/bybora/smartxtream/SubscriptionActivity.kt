@@ -21,17 +21,20 @@ class SubscriptionActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_subscription) // XML dosyanızı oluşturun
+        setContentView(R.layout.activity_subscription)
 
         billingManager = BillingManager(this)
         billingManager.startConnection()
 
-        btnMonthly = findViewById(R.id.btn_sub_monthly) // XML ID'lerinizle eşleştirin
+        btnMonthly = findViewById(R.id.btn_sub_monthly)
         btnYearly = findViewById(R.id.btn_sub_yearly)
         btnLifetime = findViewById(R.id.btn_sub_lifetime)
         txtStatus = findViewById(R.id.text_sub_status)
 
+        // Fiyatları Google Play'den çek ve butonlara yaz
         loadProducts()
+
+        // Satın alma başarılı olursa ne yapacağını dinle
         observePurchaseStatus()
     }
 
@@ -39,20 +42,21 @@ class SubscriptionActivity : AppCompatActivity() {
         billingManager.queryProductDetails { detailsList ->
             runOnUiThread {
                 detailsList.forEach { product ->
+                    // Fiyatı (örn: 49.99 TL) al ve butona yaz
+                    val price = product.subscriptionOfferDetails?.firstOrNull()?.pricingPhases?.pricingPhaseList?.firstOrNull()?.formattedPrice
+                        ?: product.oneTimePurchaseOfferDetails?.formattedPrice
+
                     when (product.productId) {
                         BillingManager.SUB_MONTHLY -> {
-                            val price = product.subscriptionOfferDetails?.firstOrNull()?.pricingPhases?.pricingPhaseList?.firstOrNull()?.formattedPrice
-                            btnMonthly.text = "Aylık Abonelik ($price)"
+                            btnMonthly.text = "${getString(R.string.monthly_subscription)} ($price)"
                             btnMonthly.setOnClickListener { billingManager.launchPurchaseFlow(this, product) }
                         }
                         BillingManager.SUB_YEARLY -> {
-                            val price = product.subscriptionOfferDetails?.firstOrNull()?.pricingPhases?.pricingPhaseList?.firstOrNull()?.formattedPrice
-                            btnYearly.text = "Yıllık Abonelik ($price)"
+                            btnYearly.text = "${getString(R.string.annual_subscription_with_advantage)} ($price)"
                             btnYearly.setOnClickListener { billingManager.launchPurchaseFlow(this, product) }
                         }
                         BillingManager.LIFETIME -> {
-                            val price = product.oneTimePurchaseOfferDetails?.formattedPrice
-                            btnLifetime.text = "Ömür Boyu ($price)"
+                            btnLifetime.text = "${getString(R.string.lifeTime_subscription)} ($price)"
                             btnLifetime.setOnClickListener { billingManager.launchPurchaseFlow(this, product) }
                         }
                     }
@@ -66,9 +70,15 @@ class SubscriptionActivity : AppCompatActivity() {
             billingManager.isPremium.collectLatest { isPremium ->
                 if (isPremium) {
                     txtStatus.text = "Premium Aktif! Teşekkürler."
+                    Toast.makeText(this@SubscriptionActivity, "Satın alma başarılı!", Toast.LENGTH_LONG).show()
+
+                    // Premium bilgisini kaydet
                     SettingsManager.setPremiumStatus(this@SubscriptionActivity, true)
-                    // Bir süre sonra ana ekrana dön
-                    btnMonthly.postDelayed({ finish() }, 1500)
+
+                    // 1.5 saniye sonra ana ekrana dön
+                    btnMonthly.postDelayed({
+                        finish() // Bu ekranı kapat, MainActivity'ye dön
+                    }, 1500)
                 }
             }
         }

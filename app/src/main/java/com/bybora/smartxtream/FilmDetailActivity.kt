@@ -39,8 +39,8 @@ class FilmDetailActivity : BaseActivity() {
     private var streamId: Int = -1
     private var trailerUrl: String? = null
 
-    // --- DÜZELTME: Dosya uzantısını saklayacak değişken ---
-    private var currentExtension: String = "mp4" // Varsayılan mp4 ama API'den güncellenecek
+    // Dosya uzantısı
+    private var currentExtension: String = "mp4"
 
     // Favori İşlemleri
     private val db by lazy { AppDatabase.getInstance(this) }
@@ -82,14 +82,14 @@ class FilmDetailActivity : BaseActivity() {
 
         btnPlay.setOnClickListener { playMovie() }
 
+        // BURASI TEST: IPTV'den bağımsız sabit fragman linki (YouTube embed)
         btnTrailer.setOnClickListener {
-            if (!trailerUrl.isNullOrEmpty()) {
-                val intent = Intent(this, TrailerActivity::class.java)
-                intent.putExtra("EXTRA_TRAILER_URL", trailerUrl)
-                startActivity(intent)
-            } else {
-                Toast.makeText(this, "Fragman bulunamadı", Toast.LENGTH_SHORT).show()
-            }
+            // IPTV sağlayıcısından geleni tamamen boşveriyoruz, sabit link:
+            val testUrl = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"
+
+            TrailerDialogFragment
+                .newInstance(testUrl)
+                .show(supportFragmentManager, "trailer_dialog")
         }
 
         btnFavorite.setOnClickListener { toggleFavorite() }
@@ -118,7 +118,7 @@ class FilmDetailActivity : BaseActivity() {
                     currentMovieImage = info?.image ?: ""
                     trailerUrl = info?.youtubeTrailer
 
-                    // --- DÜZELTME: Uzantıyı API'den alıp kaydediyoruz ---
+                    // Uzantı API'den
                     currentExtension = movieData?.extension ?: "mp4"
 
                     // UI Doldur
@@ -134,12 +134,6 @@ class FilmDetailActivity : BaseActivity() {
                     textCast.text = info?.cast ?: "-"
                     textDirector.text = info?.director ?: "-"
 
-                    if (trailerUrl.isNullOrEmpty()) {
-                        btnTrailer.visibility = View.GONE
-                    } else {
-                        btnTrailer.visibility = View.VISIBLE
-                    }
-
                     if (!info?.image.isNullOrEmpty()) {
                         Glide.with(this@FilmDetailActivity).load(info?.image).into(imgPoster)
                         Glide.with(this@FilmDetailActivity).load(info?.image).into(imgBackdrop)
@@ -148,12 +142,20 @@ class FilmDetailActivity : BaseActivity() {
                     categoryId = movieData?.categoryId ?: "0"
 
                 } else {
-                    Toast.makeText(this@FilmDetailActivity, "Bilgi alınamadı", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@FilmDetailActivity,
+                        "Bilgi alınamadı",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
                 progressBar.visibility = View.GONE
             } catch (e: Exception) {
                 progressBar.visibility = View.GONE
-                Toast.makeText(this@FilmDetailActivity, "Hata: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@FilmDetailActivity,
+                    "Hata: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -166,10 +168,7 @@ class FilmDetailActivity : BaseActivity() {
             putExtra("EXTRA_STREAM_ID", streamId)
             putExtra("EXTRA_STREAM_TYPE", "vod")
             putExtra("EXTRA_STREAM_NAME", currentMovieName)
-
-            // --- EKSİK OLAN BU SATIRI EKLEYİN ---
             putExtra("EXTRA_STREAM_ICON", currentMovieImage)
-
             putExtra("EXTRA_EXTENSION", currentExtension)
         }
         startActivity(intent)
@@ -187,7 +186,11 @@ class FilmDetailActivity : BaseActivity() {
             if (isFav) {
                 db.favoriteDao().removeFavorite(streamId, "vod")
                 isFav = false
-                Toast.makeText(this@FilmDetailActivity, "Favorilerden çıkarıldı", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@FilmDetailActivity,
+                    "Favorilerden çıkarıldı",
+                    Toast.LENGTH_SHORT
+                ).show()
             } else {
                 val fav = Favorite(
                     streamId = streamId,
@@ -198,7 +201,11 @@ class FilmDetailActivity : BaseActivity() {
                 )
                 db.favoriteDao().addFavorite(fav)
                 isFav = true
-                Toast.makeText(this@FilmDetailActivity, "Favorilere eklendi", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@FilmDetailActivity,
+                    "Favorilere eklendi",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
             updateFavIcon()
         }
