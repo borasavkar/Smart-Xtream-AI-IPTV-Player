@@ -9,6 +9,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bybora.smartxtream.adapter.FilmAdapter
 import com.bybora.smartxtream.adapter.LiveCategoryAdapter
@@ -75,8 +76,8 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
         recyclerFilms = findViewById(R.id.recycler_films)
         progressBar = findViewById(R.id.progress_bar_loading)
 
-        val emptyView = findViewById<View>(R.id.text_empty_state)
-        textEmptyState = if (emptyView is TextView) emptyView else TextView(this)
+        // Hata önleyici
+        textEmptyState = try { findViewById(R.id.text_empty_state) } catch (e: Exception) { TextView(this) }
     }
 
     private fun getIntentData(): Boolean {
@@ -91,23 +92,16 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
         recyclerCategories.adapter = categoryAdapter
 
         filmAdapter = FilmAdapter(this)
-        // Liste görünümü için
-        recyclerFilms.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+        recyclerFilms.layoutManager = LinearLayoutManager(this)
         recyclerFilms.adapter = filmAdapter
     }
 
     private fun setupSearchListeners() {
         inputSearchCategory.addTextChangedListener {
-            // Liste henüz yüklenmediyse arama yapma
-            if (allCategories.isNotEmpty()) {
-                performCategorySearch(it.toString(), true)
-            }
+            if (allCategories.isNotEmpty()) performCategorySearch(it.toString(), true)
         }
-
         inputSearchFilm.addTextChangedListener {
-            if (allFilms.isNotEmpty()) {
-                performFilmSearch(it.toString(), true)
-            }
+            if (allFilms.isNotEmpty()) performFilmSearch(it.toString(), true)
         }
     }
 
@@ -115,41 +109,66 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
         progressBar.visibility = View.VISIBLE
         textEmptyState.visibility = View.GONE
 
-        lifecycleScope.launch {
-            val apiService = RetrofitClient.createService(serverUrl!!)
-
-            // 1. Kategorileri Çek (Bağımsız)
-            try {
-                val catResponse = apiService.getVodCategories(username!!, password!!)
-                if (catResponse.isSuccessful) {
-                    val rawCats = catResponse.body() ?: emptyList()
-                    allCategories = rawCats.map { LiveCategory(it.categoryId, it.categoryName, 0) }
-                }
-            } catch (e: Exception) { allCategories = emptyList() }
-
-            // 2. Filmleri Çek (Bağımsız)
-            try {
-                // Önce cache kontrolü
-                if (ContentCache.cachedMovies.isNotEmpty()) {
-                    allFilms = ContentCache.cachedMovies
-                } else {
-                    val vodResponse = apiService.getVodStreams(username!!, password!!)
-                    if (vodResponse.isSuccessful) {
-                        allFilms = vodResponse.body() ?: emptyList()
-                    }
-                }
-            } catch (e: Exception) { allFilms = emptyList() }
-
-            processAndShowData()
+        // 1. ÖNCE HAFIZAYA BAK (Hızlı Açılış)
+        if (ContentCache.cachedMovies.isNotEmpty()) {
+            allFilms = ContentCache.cachedMovies
+            lifecycleScope.launch { fetchCategoriesAndShow() }
+        } else {
+            // 2. HAFIZA BOŞSA İNDİR
+            lifecycleScope.launch { fetchFromNetwork() }
         }
+    }
+
+    private suspend fun fetchFromNetwork() {
+        val apiService = RetrofitClient.createService(serverUrl!!)
+
+        try {
+            val vodResponse = apiService.getVodStreams(username!!, password!!)
+            if (vodResponse.isSuccessful) {
+                allFilms = vodResponse.body() ?: emptyList()
+                ContentCache.cachedMovies = allFilms
+                fetchCategoriesAndShow()
+            } else {
+                showError("Film listesi alınamadı: ${vodResponse.code()}")
+            }
+        } catch (e: Exception) {
+            showError("Bağlantı hatası: ${e.message}")
+            allFilms = emptyList()
+            fetchCategoriesAndShow() // Hata olsa bile devam et (Belki kategori gelir)
+        }
+    }
+
+    private suspend fun fetchCategoriesAndShow() {
+        val apiService = RetrofitClient.createService(serverUrl!!)
+
+        try {
+            val catResponse = apiService.getVodCategories(username!!, password!!)
+            if (catResponse.isSuccessful) {
+                val rawCats = catResponse.body() ?: emptyList()
+                allCategories = rawCats.map { LiveCategory(it.categoryId, it.categoryName, 0) }
+            }
+        } catch (e: Exception) {
+            allCategories = emptyList()
+        }
+
+        // YEDEK PLAN: Kategori listesi boşsa, filmlerden kategori üret
+        if (allCategories.isEmpty() && allFilms.isNotEmpty()) {
+            val catMap = HashMap<String, String>()
+            allFilms.forEach {
+                if (it.categoryId != null) catMap[it.categoryId] = "Kategori ${it.categoryId}"
+            }
+            allCategories = catMap.map { LiveCategory(it.key, it.value, 0) }
+        }
+
+        processAndShowData()
     }
 
     private suspend fun processAndShowData() {
         withContext(Dispatchers.Default) {
             val counts = HashMap<String, Int>()
-
             val allCat = LiveCategory("0", "Tüm Filmler", 0)
-            val mutableCats = mutableListOf(allCat)
+            val mutableCats = ArrayList<LiveCategory>()
+            mutableCats.add(allCat)
             mutableCats.addAll(allCategories)
             allCategories = mutableCats
 
@@ -160,11 +179,10 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
             }
 
             withContext(Dispatchers.Main) {
-                // Kategorileri ve sayıları güncelle
                 categoryAdapter.submitList(allCategories)
                 categoryAdapter.setChannelCounts(counts)
 
-                // İlk açılışta tüm filmleri göster
+                // Varsayılan olarak tümünü göster
                 filmAdapter.submitList(allFilms)
                 updateEmptyState(allFilms.isEmpty())
 
@@ -176,6 +194,7 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
     private fun updateEmptyState(isEmpty: Boolean) {
         textEmptyState.visibility = if (isEmpty) View.VISIBLE else View.GONE
         recyclerFilms.visibility = if (isEmpty) View.GONE else View.VISIBLE
+        if (isEmpty) textEmptyState.text = "İçerik bulunamadı veya yüklenemedi."
     }
 
     private fun performCategorySearch(txt: String, isAuto: Boolean) {
@@ -211,7 +230,6 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
 
         val res = if (category.categoryId == "0") allFilms
         else allFilms.filter { it.categoryId == category.categoryId }
-
         filmAdapter.submitList(res)
         recyclerFilms.scrollToPosition(0)
         updateEmptyState(res.isEmpty())
@@ -227,5 +245,12 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
             putExtra("EXTRA_EXTENSION", film.fileExtension)
         }
         startActivity(intent)
+    }
+
+    private fun showError(msg: String) {
+        progressBar.visibility = View.GONE
+        // Kullanıcıya hatayı göster
+        Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+        updateEmptyState(true)
     }
 }

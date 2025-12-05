@@ -35,11 +35,11 @@ data class LiveStream(
     val directSource: String? = null
 )
 
-// LiveCategory (Canlı, Film ve Dizi Kategorileri için ortak kullanılabilir)
+// LiveCategory (Ortak)
 data class LiveCategory(
     @Json(name = "category_id") val categoryId: String,
     @Json(name = "category_name") val categoryName: String,
-    @Json(name = "parent_id") val parentId: Int? = 0 // Null gelebilir, varsayılan 0
+    @Json(name = "parent_id") val parentId: Int? = 0
 )
 
 // --- FİLMLER (VOD) ---
@@ -48,16 +48,32 @@ data class VodStream(
     val name: String?,
     @Json(name = "stream_icon") val streamIcon: String?,
     @Json(name = "category_id") val categoryId: String?,
-    @Json(name = "container_extension") val fileExtension: String?
-)
+    @Json(name = "container_extension") val fileExtension: String?,
 
-// Film Kategorileri için Özel Model
+    // DÜZELTME: Veri tipi 'Any?' yapıldı (Sayı, String veya Null gelebilir)
+    @Json(name = "rating") private val _rating: Any? = null,
+    @Json(name = "rating_5based") private val _rating5: Any? = null,
+
+    @Json(name = "added") val added: String? = ""
+) {
+    // Güvenli Dönüştürücü: Ne gelirse gelsin Double'a çevirir, hata vermez.
+    val rating: Double
+        get() {
+            return when (_rating) {
+                is Number -> _rating.toDouble()
+                is String -> _rating.toDoubleOrNull() ?: 0.0
+                else -> 0.0
+            }
+        }
+}
+
+// Film Kategorileri
 data class VodCategory(
     @Json(name = "category_id") val categoryId: String,
     @Json(name = "category_name") val categoryName: String
 )
 
-// Film Detayları (API'den gelen detay yanıtı)
+// Film Detayları
 data class VodInfoResponse(
     val info: VodInfoData?,
     @Json(name = "movie_data") val movieData: VodMovieData?
@@ -71,7 +87,7 @@ data class VodInfoData(
     @Json(name = "director") val director: String?,
     @Json(name = "genre") val genre: String?,
     @Json(name = "release_date") val releaseDate: String?,
-    @Json(name = "rating") val rating: String?,
+    @Json(name = "rating") val rating: String?, // Detayda genelde String gelir
     @Json(name = "duration") val duration: String?,
     @Json(name = "youtube_trailer") val youtubeTrailer: String?
 )
@@ -80,7 +96,6 @@ data class VodMovieData(
     @Json(name = "stream_id") val streamId: Int,
     @Json(name = "container_extension") val extension: String?,
     @Json(name = "name") val name: String?,
-    // DÜZELTME: Bu alan eksikti, 'FilmsActivity' hatasını çözmek için eklendi
     @Json(name = "category_id") val categoryId: String?
 )
 
@@ -90,18 +105,29 @@ data class SeriesStream(
     val name: String?,
     @Json(name = "stream_icon") val streamIcon: String?,
     val cover: String?,
-    @Json(name = "category_id") val categoryId: String?
-)
+    @Json(name = "category_id") val categoryId: String?,
+
+    // DÜZELTME: Diziler için de aynı koruma
+    @Json(name = "rating") private val _rating: Any? = null,
+    @Json(name = "rating_5based") private val _rating5: Any? = null
+) {
+    val rating: Double
+        get() {
+            return when (_rating) {
+                is Number -> _rating.toDouble()
+                is String -> _rating.toDoubleOrNull() ?: 0.0
+                else -> 0.0
+            }
+        }
+}
 
 // Dizi Detayları
 data class SeriesInfoResponse(
     val seasons: List<Season>?,
-    // Dizi genel bilgileri
     val info: SeriesInfoData?,
     val episodes: Map<String, List<Episode>>?
 )
 
-// Dizinin genel bilgileri (Özet, Puan, Kapak vb.)
 data class SeriesInfoData(
     val name: String?,
     val cover: String?,
@@ -120,11 +146,10 @@ data class Season(
 )
 
 data class Episode(
-    val id: String, // Bazı sunucularda String gelebilir
+    val id: String,
     val title: String?,
     @Json(name = "container_extension") val fileExtension: String?,
     val info: EpisodeInfo?,
-    // Dizi bölümü detayları
     @Json(name = "season") val seasonNumber: Int? = 0,
     @Json(name = "episode_num") val episodeNumber: Int? = 0
 )
@@ -149,7 +174,7 @@ data class EpgListing(
     val description: String?
 )
 
-// --- UI YARDIMCI MODELLER (Veritabanı veya API değil, sadece arayüz için) ---
+// --- UI YARDIMCI MODELLER ---
 data class ChannelWithEpg(
     val channel: LiveStream,
     var epgNow: EpgListing?
