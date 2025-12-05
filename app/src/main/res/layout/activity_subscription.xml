@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp"
+    android:background="@drawable/bg_main_gradient">
+
+    <ImageView
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:src="@drawable/ic_heart_filled"
+        android:layout_marginBottom="24dp"
+        android:contentDescription="@string/premium" />
+
+    <TextView
+        android:id="@+id/text_sub_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/open_premium_properties"
+        android:textColor="@android:color/white"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="32dp"/>
+
+    <Button
+        android:id="@+id/btn_sub_monthly"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/monthly_subscription"
+        android:backgroundTint="@color/purple_500"
+        android:layout_marginBottom="12dp"/>
+
+    <Button
+        android:id="@+id/btn_sub_yearly"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/annual_subscription_with_advantage"
+        android:backgroundTint="@color/purple_700"
+        android:layout_marginBottom="12dp"/>
+
+    <Button
+        android:id="@+id/btn_sub_lifetime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/lifeTime_subscription"
+        android:backgroundTint="@color/teal_700"
+        android:layout_marginBottom="24dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/tria_exp_text"
+        android:textColor="#B0BEC5"
+        android:gravity="center"
+        android:textSize="12sp"/>
+
+</LinearLayout>
