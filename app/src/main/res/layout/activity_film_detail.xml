@@ -78,11 +78,13 @@
             app:layout_constraintStart_toStartOf="@id/text_title"
             app:layout_constraintTop_toBottomOf="@id/text_title">
 
-            <ImageView
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:src="@android:drawable/star_big_on"
-                app:tint="#FFD700"/> <TextView
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@string/btn_add_favorites"
+            android:src="@android:drawable/star_big_on"
+            app:tint="#FFD700"/>
+            <TextView
             android:id="@+id/text_rating"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

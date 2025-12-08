@@ -103,7 +103,7 @@
         android:paddingHorizontal="12dp"
         android:paddingVertical="6dp"
         android:layout_marginStart="16dp"
-        android:text="Wait..."
+        android:text="@string/wait"
         android:textColor="#FFEB3B"
         android:textSize="13sp"
         android:textStyle="bold"

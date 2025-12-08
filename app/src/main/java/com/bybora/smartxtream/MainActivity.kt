@@ -23,7 +23,6 @@ import com.bybora.smartxtream.network.RetrofitClient
 import com.bybora.smartxtream.network.VodStream
 import com.bybora.smartxtream.network.SeriesStream
 import com.bybora.smartxtream.utils.ContentCache
-import com.bybora.smartxtream.utils.M3UParser
 import com.bybora.smartxtream.utils.SettingsManager
 import com.bybora.smartxtream.utils.TrialManager
 import com.google.android.material.button.MaterialButton
@@ -87,15 +86,10 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         if (!isPremium) {
             val isTrialActive = TrialManager.checkTrialStatus(this)
             if (!isTrialActive) {
-                Toast.makeText(this, "Deneme süreniz bitti. Lütfen abone olun.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Deneme süreniz bitti.", Toast.LENGTH_LONG).show()
                 startActivity(Intent(this, SubscriptionActivity::class.java))
                 finish()
                 return
-            } else {
-                val daysLeft = TrialManager.getRemainingDays(this)
-                if (daysLeft < 4) {
-                    Toast.makeText(this, "Deneme Sürümü: Son $daysLeft gün!", Toast.LENGTH_LONG).show()
-                }
             }
         }
 
@@ -121,17 +115,10 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     startActivity(Intent(this@MainActivity, AddProfileActivity::class.java))
                 } else {
                     val savedId = SettingsManager.getSelectedProfileId(this@MainActivity)
-                    val isSavedProfileValid = profiles.any { it.id == savedId }
+                    val targetProfile = profiles.find { it.id == savedId } ?: profiles[0]
 
-                    if (!isSavedProfileValid) {
-                        selectProfile(profiles[0])
-                    } else {
-                        if (activeProfile == null || activeProfile?.id != savedId) {
-                            val targetProfile = profiles.find { it.id == savedId }
-                            if (targetProfile != null) {
-                                selectProfile(targetProfile)
-                            }
-                        }
+                    if (activeProfile?.id != targetProfile.id) {
+                        selectProfile(targetProfile)
                     }
                 }
             }
@@ -144,27 +131,21 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         textStatusProfileName.text = profile.profileName
         loadAllContent(profile)
 
-        if (profile.isM3u) {
-            textExpirationDate.setText(R.string.status_unlimited)
-            textConnectionStatus.setText(R.string.status_connected)
-            textConnectionStatus.setTextColor(getColor(R.color.green_success))
-        } else {
-            lifecycleScope.launch {
-                try {
-                    val apiService = RetrofitClient.createService(profile.serverUrl)
-                    val response = apiService.authenticate(profile.username, profile.password)
-                    if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
-                        val expiry = response.body()?.userInfo?.expiryDate
-                        textExpirationDate.text = if (expiry != null) formatTimestamp(expiry) else getString(R.string.status_unlimited)
-                        textConnectionStatus.setText(R.string.status_connected)
-                        textConnectionStatus.setTextColor(getColor(R.color.green_success))
-                    } else {
-                        textConnectionStatus.setText(R.string.status_login_error)
-                        textConnectionStatus.setTextColor(getColor(android.R.color.holo_red_dark))
-                    }
-                } catch (e: Exception) {
-                    textConnectionStatus.setText(R.string.status_server_error)
+        lifecycleScope.launch {
+            try {
+                val apiService = RetrofitClient.createService(profile.serverUrl)
+                val response = apiService.authenticate(profile.username, profile.password)
+                if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
+                    val expiry = response.body()?.userInfo?.expiryDate
+                    textExpirationDate.text = if (expiry != null) formatTimestamp(expiry) else getString(R.string.status_unlimited)
+                    textConnectionStatus.setText(R.string.status_connected)
+                    textConnectionStatus.setTextColor(getColor(R.color.green_success))
+                } else {
+                    textConnectionStatus.setText(R.string.status_login_error)
+                    textConnectionStatus.setTextColor(getColor(android.R.color.holo_red_dark))
                 }
+            } catch (e: Exception) {
+                textConnectionStatus.setText(R.string.status_server_error)
             }
         }
     }
@@ -177,7 +158,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                 lifecycleScope.launch {
                     if (activeProfile?.id == profile.id) {
                         ContentCache.clear()
-                        activeProfile = null
                         clearBottomBar()
                     }
                     profileDao.deleteProfile(profile)
@@ -259,19 +239,8 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
             }
         }
         cardTv.setOnClickListener { openChannelList() }
-        cardFilms.setOnClickListener {
-            if(activeProfile?.isM3u == false) openFilmList() else showM3uAlert()
-        }
-        cardSeries.setOnClickListener {
-            if(activeProfile?.isM3u == false) openSeriesList() else showM3uAlert()
-        }
-    }
-
-    private fun showM3uAlert() {
-        AlertDialog.Builder(this)
-            .setMessage("Film/Dizi sadece Xtream hesaplarında çalışır.")
-            .setPositiveButton("OK", null)
-            .show()
+        cardFilms.setOnClickListener { openFilmList() }
+        cardSeries.setOnClickListener { openSeriesList() }
     }
 
     private fun showGlobalSettingsDialog() {
@@ -286,17 +255,20 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
             when (which) {
                 0 -> showSelectionDialog(getString(R.string.settings_audio_lang), langOptions) { idx -> SettingsManager.setAudioLang(this, langCodes[idx]) }
                 1 -> showSelectionDialog(getString(R.string.settings_subtitle_lang), langOptions) { idx -> SettingsManager.setSubtitleLang(this, langCodes[idx]) }
-                2 -> {
-                    ContentCache.clear()
-                    if (activeProfile != null) loadAllContent(activeProfile!!)
-                    Toast.makeText(this, "Yenileniyor...", Toast.LENGTH_SHORT).show()
-                }
+                2 -> { ContentCache.clear(); if(activeProfile!=null) loadAllContent(activeProfile!!); Toast.makeText(this, "Yenileniyor...", Toast.LENGTH_SHORT).show() }
             }
         }.setPositiveButton(getString(R.string.btn_ok), null).show()
     }
 
     private fun showSelectionDialog(title: String, items: Array<String>, onSelected: (Int) -> Unit) {
-        AlertDialog.Builder(this).setTitle(title).setItems(items) { _, which -> onSelected(which); Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show(); showGlobalSettingsDialog() }.show()
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setItems(items) { _, which ->
+                onSelected(which)
+                Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
+                showGlobalSettingsDialog()
+            }
+            .show()
     }
 
     private fun observeFavorites() {
@@ -342,16 +314,14 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                         sr = ContentCache.cachedSeries
                         ep = ContentCache.cachedEpg
                     } else {
-                        if (profile.isM3u) {
-                            val result = M3UParser.parseM3U(profile.serverUrl)
-                            ch = result.second
-                        } else {
-                            val apiService = RetrofitClient.createService(profile.serverUrl)
-                            try { val r = apiService.getLiveStreams(profile.username, profile.password); if (r.isSuccessful) ch = r.body() ?: emptyList() } catch (e: Exception) {}
-                            try { val r = apiService.getVodStreams(profile.username, profile.password); if (r.isSuccessful) mv = r.body() ?: emptyList() } catch (e: Exception) {}
-                            try { val r = apiService.getSeries(profile.username, profile.password); if (r.isSuccessful) sr = r.body() ?: emptyList() } catch (e: Exception) {}
-                            try { val r = apiService.getEpgTable(profile.username, profile.password); if (r.isSuccessful) ep = r.body()?.listings } catch (e: Exception) {}
-                        }
+                        val apiService = RetrofitClient.createService(profile.serverUrl)
+
+                        // AYRI TRY-CATCH
+                        try { val r = apiService.getLiveStreams(profile.username, profile.password); if (r.isSuccessful) ch = r.body() ?: emptyList() } catch (e: Exception) {}
+                        try { val r = apiService.getVodStreams(profile.username, profile.password); if (r.isSuccessful) mv = r.body() ?: emptyList() } catch (e: Exception) {}
+                        try { val r = apiService.getSeries(profile.username, profile.password); if (r.isSuccessful) sr = r.body() ?: emptyList() } catch (e: Exception) {}
+                        try { val r = apiService.getEpgTable(profile.username, profile.password); if (r.isSuccessful) ep = r.body()?.listings } catch (e: Exception) {}
+
                         ContentCache.update(profile.id, ch, mv, sr, ep)
                     }
                     Quadruple(ch, mv, sr, ep)
@@ -363,7 +333,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     val safeMovies = movies.filter { isSafeContent(it.name) }
                     val safeSeries = series.filter { isSafeContent(it.name) }
 
-                    // MAÇLAR (Aynı)
+                    // MAÇLAR
                     val matches = if (!epgList.isNullOrEmpty()) {
                         val now = System.currentTimeMillis()
                         val calendar = Calendar.getInstance()
@@ -378,46 +348,41 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                         }.take(20)
                     } else emptyList()
 
-                    // SON EKLENENLER (Aynı)
+                    // SON EKLENENLER
                     val newMovies = safeMovies.sortedByDescending { it.streamId }.take(10)
                     val newSeries = safeSeries.sortedByDescending { it.seriesId }.take(5)
                     val latest = mutableListOf<ChannelWithEpg>()
                     newMovies.forEach { m -> latest.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", "Film", "", "", ""))) }
                     newSeries.forEach { s -> latest.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", "Dizi", "", "", ""))) }
 
-                    // --- YENİ ALGORİTMA: SİZİN İÇİN SEÇTİKLERİMİZ ---
-                    // 1. Favorilerden Kategori Frekansını Bul
-                    val favorites = favoriteDao.getAllFavorites().first()
-                    val favCategoryCounts = favorites.groupingBy { it.categoryId }.eachCount()
-
-                    // 2. Aday Havuzu Oluştur (Favoride olmayanlar)
-                    val favoriteIds = favorites.map { it.streamId }.toSet()
-
-                    val candidateMovies = safeMovies.filter { it.streamId !in favoriteIds }
-                    val candidateSeries = safeSeries.filter { it.seriesId !in favoriteIds }
-
-                    // 3. Puanlama Fonksiyonu
-                    fun scoreItem(catId: String?, rating: Double?): Double {
-                        val catScore = (favCategoryCounts[catId] ?: 0) * 10.0 // Favori kategori çarpanı
-                        val rateScore = (rating ?: 0.0) * 2.0 // Puan çarpanı
-                        return catScore + rateScore
-                    }
-
-                    // 4. Sıralama ve Seçme
-                    val topMovies = candidateMovies.sortedByDescending { scoreItem(it.categoryId, it.rating) }.take(7)
-                    val topSeries = candidateSeries.sortedByDescending { scoreItem(it.categoryId, it.rating) }.take(3)
-
+                    // ÖNERİLER (Sizin İçin Seçtiklerimiz)
                     val recs = mutableListOf<ChannelWithEpg>()
-                    topMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", "Film", "", "", ""))) }
-                    topSeries.forEach { s -> recs.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", "Dizi", "", "", ""))) }
+                    val myFavorites = favoriteDao.getAllFavorites().first()
 
-                    // Eğer algoritma sonuç bulamazsa (favori yoksa), en yüksek puanlıları getir
-                    if (recs.isEmpty()) {
-                        val fallbackMovies = safeMovies.sortedByDescending { it.rating ?: 0.0 }.take(10)
-                        fallbackMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", "Film", "", "", ""))) }
+                    if (myFavorites.isNotEmpty()) {
+                        // Kategori bazlı basit öneri (Çok karmaşık keyword analizini kaldırdım, performansı artırır)
+                        val favCatIds = myFavorites.map { it.categoryId }.toSet()
+
+                        val recMovies = safeMovies.filter { it.categoryId in favCatIds }.shuffled().take(10)
+                        val recSeries = safeSeries.filter { it.categoryId in favCatIds }.shuffled().take(5)
+
+                        recMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", "Film", "", "", ""))) }
+                        recSeries.forEach { s -> recs.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", "Dizi", "", "", ""))) }
                     }
 
-                    Triple(matches, latest, recs)
+                    if (recs.isEmpty()) {
+                        val trendingMovies = safeMovies.take(10)
+                        trendingMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", "Film", "", "", ""))) }
+                    }
+
+                    val finalRecs = if (recs.isNotEmpty()) {
+                        val combined = combineChannelsAndEpg(recs.map { it.channel }, epgList)
+                        combined.mapIndexed { index, item ->
+                            if (recs[index].epgNow?.title == "Film" || recs[index].epgNow?.title == "Dizi") item.copy(epgNow = recs[index].epgNow) else item
+                        }
+                    } else emptyList()
+
+                    Triple(matches, latest, finalRecs)
                 }
 
                 if (todayMatches.isNotEmpty()) {
@@ -519,7 +484,15 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private fun showManagementDialog() { val profileNames = allProfiles.map { it.profileName }.toTypedArray(); AlertDialog.Builder(this).setTitle(getString(R.string.btn_manage)).setItems(profileNames) { _, which -> showActionDialog(allProfiles[which]) }.setNegativeButton(getString(R.string.btn_cancel), null).show() }
     private fun showActionDialog(profile: Profile) { val options = arrayOf(getString(R.string.btn_edit), getString(R.string.btn_delete)); AlertDialog.Builder(this).setTitle(profile.profileName).setItems(options) { _, which -> when (which) { 0 -> editProfile(profile); 1 -> deleteProfile(profile) } }.show() }
     private fun editProfile(profile: Profile) { val intent = Intent(this, AddProfileActivity::class.java).apply { putExtra("EXTRA_EDIT_ID", profile.id); putExtra("EXTRA_PROFILE_NAME", profile.profileName); putExtra("EXTRA_USERNAME", profile.username); putExtra("EXTRA_PASSWORD", profile.password); putExtra("EXTRA_SERVER_URL", profile.serverUrl) }; startActivity(intent) }
-    private fun clearBottomBar() { textConnectionStatus.setText(R.string.text_not_connected); textConnectionStatus.setTextColor(getColor(android.R.color.darker_gray)); textStatusProfileName.setText(R.string.text_no_profile); textExpirationDate.text = "N/A"; recyclerRecommendations.visibility = View.GONE; titleRecommendations.visibility = View.GONE }
+
+    private fun clearBottomBar() {
+        textConnectionStatus.setText(R.string.text_not_connected)
+        textConnectionStatus.setTextColor(getColor(android.R.color.darker_gray))
+        textStatusProfileName.setText(R.string.text_no_profile)
+        textExpirationDate.text = "N/A"
+        recyclerRecommendations.visibility = View.GONE; titleRecommendations.visibility = View.GONE
+    }
+
     private fun openChannelList() { activeProfile?.let { val intent = Intent(this, LiveCategoryActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
     private fun openFilmList() { activeProfile?.let { val intent = Intent(this, FilmsActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
     private fun openSeriesList() { activeProfile?.let { val intent = Intent(this, SeriesListActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }

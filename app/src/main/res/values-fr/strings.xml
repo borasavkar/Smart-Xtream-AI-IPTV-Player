@@ -156,4 +156,5 @@
     <string name="error_fetch_details">Impossible de charger les détails.</string>
     <string name="msg_fav_added">Ajouté aux favoris</string>
     <string name="msg_fav_removed">Retiré des favoris</string>
+    <string name="wait">Patientez…</string>
 </resources>

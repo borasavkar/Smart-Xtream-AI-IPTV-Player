@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.TrafficStats
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -57,7 +56,7 @@ class PlayerActivity : BaseActivity() {
     private var playerView: PlayerView? = null
     private var trackSelector: DefaultTrackSelector? = null
 
-    // UI Bileşenleri
+    // UI
     private lateinit var btnSettings: ImageButton
     private lateinit var btnSubtitle: ImageButton
     private lateinit var btnBack: ImageButton
@@ -67,7 +66,7 @@ class PlayerActivity : BaseActivity() {
     private lateinit var textResolution: TextView
     private var topControls: View? = null
 
-    // Veriler
+    // Veri
     private var serverUrl: String? = null
     private var username: String? = null
     private var password: String? = null
@@ -85,11 +84,9 @@ class PlayerActivity : BaseActivity() {
     private val db by lazy { AppDatabase.getInstance(this) }
     private var isFav = false
 
-    // Resume & Progress
     private var startTime: Long = 0
     private var startPosition: Long = 0
 
-    // Hız Göstergesi
     private var lastTotalRxBytes: Long = 0
     private var lastTimeStamp: Long = 0
     private var smoothedSpeed: Double = 0.0
@@ -241,72 +238,24 @@ class PlayerActivity : BaseActivity() {
                 trackSelector = DefaultTrackSelector(this)
                 applyGlobalSettings(trackSelector!!)
 
-                // --- AĞ AYARLARI ---
-                // Bağlantı kopmalarını önlemek için süreleri uzatıyoruz
-                val baseClient = RetrofitClient.okHttpClient
-                val okHttpClient = baseClient.newBuilder()
-                    .connectTimeout(60, TimeUnit.SECONDS) // 60sn Bağlantı süresi
-                    .readTimeout(60, TimeUnit.SECONDS)    // 60sn Okuma süresi
-                    .followRedirects(true)
-                    .followSslRedirects(true)
-                    .build()
+                val baseClient: OkHttpClient = RetrofitClient.okHttpClient
+                val okHttpClient = baseClient.newBuilder().connectTimeout(30, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).followRedirects(true).followSslRedirects(true).build()
+                val okHttpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient).setUserAgent("BoraIPTV/1.0")
+                val dataSourceFactory: DataSource.Factory = if (streamType != "live") setupCache(this, okHttpDataSourceFactory) else okHttpDataSourceFactory
 
-                val okHttpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
-                    .setUserAgent("BoraIPTV/1.0")
-
-                // VOD içerikler için Önbellek (Cache) kullanımı
-                val dataSourceFactory: DataSource.Factory = if (streamType != "live") {
-                    setupCache(this, okHttpDataSourceFactory)
-                } else {
-                    okHttpDataSourceFactory
-                }
-
-                // --- RENDER AYARLARI ---
-                // MODE_ON: Donanım varsa onu kullanır, yoksa yazılıma (SW) geçer. En güvenli mod.
-                // Bu mod "0xfa3" hatalarını engeller.
+                // RENDER MODE: ON (Donanım + Yazılım Hibrit)
                 val renderersFactory = DefaultRenderersFactory(this)
                     .setEnableDecoderFallback(true)
                     .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
 
-                // --- TAMPON (BUFFER) AYARLARI ---
-                val loadControlBuilder = DefaultLoadControl.Builder()
-
-                if (streamType == "live") {
-                    // CANLI YAYIN: Düşük gecikme (Low Latency)
-                    loadControlBuilder.setBufferDurationsMs(
-                        3_000,   // Min buffer
-                        10_000,  // Max buffer
-                        1_000,   // Oynatmaya başlama
-                        2_000    // Donma sonrası devam etme
-                    )
-                } else {
-                    // FİLM/DİZİ (VOD): Yüksek Kalite için Yüksek Tampon
-                    // Takılmaları önlemek için daha fazla veri indirir
-                    loadControlBuilder.setBufferDurationsMs(
-                        60_000,  // Min buffer (60 Saniye!) - Takılmayı önler
-                        120_000, // Max buffer (120 Saniye)
-                        2_500,   // Oynatmaya başlama (Hızlı açılış için düşük)
-                        5_000    // Donma sonrası devam etme
-                    )
-                    // Hedef Tampon Boyutu: 128 MB (4K için gerekli)
-                    loadControlBuilder.setTargetBufferBytes(128 * 1024 * 1024)
-                    // Süreye öncelik ver (Boyut dolsa bile süre dolana kadar indir)
-                    loadControlBuilder.setPrioritizeTimeOverSizeThresholds(true)
-                }
-
-                val loadControl = loadControlBuilder.build()
-
-                val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
-                    .setLiveTargetOffsetMs(10_000)
-
-                player = ExoPlayer.Builder(this, renderersFactory)
-                    .setMediaSourceFactory(mediaSourceFactory)
-                    .setTrackSelector(trackSelector!!)
-                    .setLoadControl(loadControl) // Özel tampon ayarını uygula
-                    .setAudioAttributes(androidx.media3.common.AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), true)
-                    .setDeviceVolumeControlEnabled(true)
-                    .setHandleAudioBecomingNoisy(true)
+                // Standart Buffer
+                val loadControl = DefaultLoadControl.Builder()
+                    .setPrioritizeTimeOverSizeThresholds(true)
                     .build()
+
+                val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory).setLiveTargetOffsetMs(10_000)
+
+                player = ExoPlayer.Builder(this, renderersFactory).setMediaSourceFactory(mediaSourceFactory).setTrackSelector(trackSelector!!).setLoadControl(loadControl).setAudioAttributes(androidx.media3.common.AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), true).setDeviceVolumeControlEnabled(true).setHandleAudioBecomingNoisy(true).build()
 
                 playerView?.player = player
                 playerView?.keepScreenOn = true
@@ -329,12 +278,6 @@ class PlayerActivity : BaseActivity() {
                         runOnUiThread {
                             textResolution.text = "${videoSize.width}x${videoSize.height}"
                             textResolution.visibility = View.VISIBLE
-
-                            // 4K Uyarısı (Bilgilendirme amaçlı)
-                            if (videoSize.width >= 3840 && !canHandle4K()) {
-                                // Uyarıyı kısa gösteriyoruz, oynatmaya devam ediyoruz
-                                Toast.makeText(this@PlayerActivity, "4K İçerik", Toast.LENGTH_SHORT).show()
-                            }
                         }
                     }
                 })
@@ -358,9 +301,7 @@ class PlayerActivity : BaseActivity() {
         val parametersBuilder = selector.buildUponParameters()
         val (maxWidth, maxHeight) = getMaxSupportedResolution()
         parametersBuilder.setMaxVideoSize(maxWidth, maxHeight)
-        // Bitrate limitini kaldır (4K için sınırsız)
         parametersBuilder.setMaxVideoBitrate(Int.MAX_VALUE)
-
         parametersBuilder.setAllowVideoNonSeamlessAdaptiveness(true)
         parametersBuilder.setAllowVideoMixedMimeTypeAdaptiveness(false)
         parametersBuilder.setAllowAudioMixedMimeTypeAdaptiveness(true)
@@ -373,13 +314,7 @@ class PlayerActivity : BaseActivity() {
         selector.parameters = parametersBuilder.build()
     }
 
-    private fun canHandle4K(): Boolean {
-        return try {
-            val codecList = android.media.MediaCodecList(android.media.MediaCodecList.ALL_CODECS)
-            val capabilities = codecList.codecInfos.filter { !it.isEncoder }.flatMap { codecInfo -> codecInfo.supportedTypes.filter { it.equals("video/hevc", true) || it.equals("video/avc", true) }.mapNotNull { try { codecInfo.getCapabilitiesForType(it) } catch (_: Exception) { null } } }
-            capabilities.any { cap -> cap.videoCapabilities?.let { it.isSizeSupported(3840, 2160) } ?: false }
-        } catch (e: Exception) { false }
-    }
+    private fun canHandle4K(): Boolean { return true }
 
     private fun getMaxSupportedResolution(): Pair<Int, Int> {
         return try {
@@ -479,13 +414,12 @@ class PlayerActivity : BaseActivity() {
         when {
             error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED || error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED -> {
                 title = "Codec Hatası"
-                msg = "Cihazınız bu video kalitesini desteklemiyor. Hata kodu: 0x${Integer.toHexString(error.errorCode)}"
-                // Codec hatasında kalite düşürmeyi dene
+                msg = "Hata kodu: 0x${Integer.toHexString(error.errorCode)}"
                 lifecycleScope.launch { kotlinx.coroutines.delay(2000); tryLowerQuality() }
             }
             cause is HttpDataSource.InvalidResponseCodeException -> {
                 title = "Sunucu Hatası (${cause.responseCode})"
-                msg = when (cause.responseCode) { 404 -> "Kaynak bulunamadı."; 403 -> "Erişim reddedildi."; else -> "Sunucu hatası." }
+                msg = when (cause.responseCode) { 404 -> "Dosya bulunamadı."; 403 -> "Erişim reddedildi."; else -> "Sunucu hatası." }
             }
             error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> { title = "İnternet Yok"; msg = "Bağlantı hatası." }
             else -> { title = "Oynatma Hatası"; msg = "Hata: ${error.message ?: "Bilinmeyen"}" }
@@ -505,13 +439,12 @@ class PlayerActivity : BaseActivity() {
                     Triple(width * height, track, "${width}x${height}")
                 } else null
             }.sortedBy { it.first }
-            // En düşük kaliteli olanı bul
             val targetTrack = sortedTracks.firstOrNull { it.first <= 1920 * 1080 } ?: sortedTracks.firstOrNull()
             targetTrack?.let {
                 selectTrack(C.TRACK_TYPE_VIDEO, it.second.groupIndex, it.second.trackIndex, it.second.rendererIndex)
                 val currentPos = player?.currentPosition ?: 0
                 player?.seekTo(currentPos); player?.prepare(); player?.play()
-                Toast.makeText(this, "Otomatik kalite düşürüldü: ${it.third}", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Kalite düşürüldü.", Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) { android.util.Log.e("PlayerActivity", "Kalite düşürme hatası", e) }
     }
@@ -535,10 +468,6 @@ class PlayerActivity : BaseActivity() {
     }
 
     data class TrackInfo(val name: String, val groupIndex: Int, val trackIndex: Int, val rendererIndex: Int)
-
-    private fun checkDynamicBufferPolicy() {
-        // Otomatik yönetiliyor
-    }
 
     private fun getTracksByType(type: Int): List<TrackInfo> {
         val list = mutableListOf<TrackInfo>()

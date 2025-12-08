@@ -156,4 +156,5 @@
     <string name="error_fetch_details">Detaylar alınamadı.</string>
     <string name="msg_fav_added">Favorilere eklendi</string>
     <string name="msg_fav_removed">Favorilerden çıkarıldı</string>
+    <string name="wait">bekle…</string>
 </resources>

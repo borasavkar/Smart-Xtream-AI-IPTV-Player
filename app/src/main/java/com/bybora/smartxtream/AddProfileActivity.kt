@@ -85,43 +85,29 @@ class AddProfileActivity : BaseActivity() {
     private fun validateAndSaveProfile() {
         val serverUrl = editTextServerUrl.text.toString().trim()
         var profileName = editTextProfileName.text.toString().trim()
-        if (profileName.isNotEmpty()) {
+
+        if (profileName.isEmpty()) {
+            profileName = "Profil"
+        } else {
             profileName = profileName.substring(0, 1).uppercase() + profileName.substring(1)
         }
+
         val username = editTextUsername.text.toString().trim()
         val password = editTextPassword.text.toString().trim()
 
+        // SADECE XTREAM: Tüm alanlar zorunlu
         if (!validateInputs(profileName, username, serverUrl)) return
 
         showLoading(true)
 
         lifecycleScope.launch {
             try {
-                // Sadece Gerçek Xtream Doğrulaması
+                // API Doğrulaması
                 val apiService = RetrofitClient.createService(serverUrl)
                 val response = apiService.authenticate(username, password)
 
                 if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
-                    val profileToSave = Profile(
-                        id = if (isEditMode) editingProfileId else 0,
-                        profileName = profileName,
-                        serverUrl = serverUrl,
-                        username = username,
-                        password = password,
-                        isM3u = false
-                    )
-
-                    if (isEditMode) {
-                        profileDao.updateProfile(profileToSave)
-                        SettingsManager.saveSelectedProfileId(this@AddProfileActivity, profileToSave.id)
-                        showToast(R.string.msg_profile_updated)
-                    } else {
-                        val newId = profileDao.insertProfile(profileToSave)
-                        SettingsManager.saveSelectedProfileId(this@AddProfileActivity, newId.toInt())
-                        showToast(R.string.msg_profile_saved)
-                    }
-                    setResult(RESULT_OK)
-                    finish()
+                    saveProfileToDb(serverUrl, profileName, username, password)
                 } else {
                     showError(getString(R.string.error_login_failed_check))
                 }
@@ -129,6 +115,31 @@ class AddProfileActivity : BaseActivity() {
                 Log.e("AddProfile", "Error: ${e.message}")
                 showError(getString(R.string.error_network_connection))
             }
+        }
+    }
+
+    private fun saveProfileToDb(url: String, name: String, user: String, pass: String) {
+        lifecycleScope.launch {
+            val profileToSave = Profile(
+                id = if (isEditMode) editingProfileId else 0,
+                profileName = name,
+                serverUrl = url,
+                username = user,
+                password = pass,
+                isM3u = false // Daima False (Xtream)
+            )
+
+            if (isEditMode) {
+                profileDao.updateProfile(profileToSave)
+                SettingsManager.saveSelectedProfileId(this@AddProfileActivity, profileToSave.id)
+                showToast(R.string.msg_profile_updated)
+            } else {
+                val newId = profileDao.insertProfile(profileToSave)
+                SettingsManager.saveSelectedProfileId(this@AddProfileActivity, newId.toInt())
+                showToast(R.string.msg_profile_saved)
+            }
+            setResult(RESULT_OK)
+            finish()
         }
     }
 
@@ -160,10 +171,12 @@ class AddProfileActivity : BaseActivity() {
             layoutProfileName.error = getString(R.string.error_profile_name_empty)
             return false
         }
+        // Kullanıcı adı zorunlu
         if (user.isEmpty()) {
             layoutUsername.error = getString(R.string.error_username_empty)
             return false
         }
+        // URL zorunlu
         if (url.isEmpty() || !url.startsWith("http")) {
             layoutServerUrl.error = getString(R.string.error_invalid_url)
             return false

@@ -23,6 +23,7 @@
             android:id="@+id/img_logo"
             android:layout_width="48dp"
             android:layout_height="48dp"
+            android:contentDescription="@string/img_logo_desc"
             android:src="@mipmap/ic_launcher_round"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="8dp"/>
@@ -82,6 +83,7 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="@drawable/bg_glass_3d"
+                android:contentDescription="@string/btn_add_favorites"
                 android:src="@drawable/ic_heart_outline"
                 android:padding="8dp"
                 android:layout_marginEnd="8dp"/>
@@ -91,6 +93,7 @@
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:background="@drawable/bg_glass_3d"
+                android:contentDescription="@string/btn_global_settings_desc"
                 android:src="@android:drawable/ic_menu_manage"
                 app:tint="@color/white"
                 android:padding="8dp"/>
@@ -203,7 +206,7 @@
             android:layout_height="wrap_content"
             android:text="@string/status_not_connected"
             android:textColor="@color/neon_pink"
-            android:textSize="10sp"
+            android:textSize="11sp"
             android:layout_marginStart="8dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
@@ -214,7 +217,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             tools:text="---"
-            android:textSize="10sp"
+            android:textSize="11sp"
             android:textColor="@color/white"
             android:layout_marginEnd="8dp"
             app:layout_constraintEnd_toEndOf="parent"
