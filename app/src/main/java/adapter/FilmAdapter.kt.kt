@@ -37,7 +37,10 @@ class FilmAdapter(private val listener: OnFilmClickListener) :
         private val epgText: TextView = itemView.findViewById(R.id.text_epg_now)
 
         fun bind(film: VodStream, listener: OnFilmClickListener) {
-            nameText.text = film.name ?: "İsimsiz Film"
+            // DÜZELTME: Sabit metin yerine çeviri kaynağı kullanıldı
+            val context = itemView.context
+            nameText.text = film.name ?: context.getString(R.string.untitled_movie)
+
             epgText.visibility = View.GONE
 
             Glide.with(itemView.context)

@@ -135,7 +135,7 @@ class SeriesListActivity : BaseActivity(), OnCategoryClickListener, OnSeriesClic
                 counts[cId] = (counts[cId] ?: 0) + 1
             }
 
-            val allCat = LiveCategory("0", "Tüm Diziler", 0)
+            val allCat = LiveCategory("0", getString(R.string.category_all_series), 0)
             if (allCategories.none { it.categoryId == "0" }) {
                 allCategories = listOf(allCat) + allCategories
             }
@@ -160,7 +160,7 @@ class SeriesListActivity : BaseActivity(), OnCategoryClickListener, OnSeriesClic
     private fun updateEmptyState(isEmpty: Boolean) {
         textEmptyState.visibility = if (isEmpty) View.VISIBLE else View.GONE
         recyclerSeries.visibility = if (isEmpty) View.GONE else View.VISIBLE
-        if (isEmpty) textEmptyState.text = "İçerik bulunamadı."
+        if (isEmpty) textEmptyState.text = getString(R.string.msg_content_not_found)
     }
 
     private fun filterSeriesByCategory(categoryId: String) {

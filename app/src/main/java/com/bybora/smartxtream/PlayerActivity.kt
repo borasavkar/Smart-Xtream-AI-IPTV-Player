@@ -181,7 +181,7 @@ class PlayerActivity : BaseActivity() {
         fileExtension = intent.getStringExtra("EXTRA_EXTENSION") ?: "mp4"
         categoryId = intent.getStringExtra("EXTRA_CATEGORY_ID") ?: "0"
         directUrl = intent.getStringExtra("EXTRA_DIRECT_URL")
-        streamName = intent.getStringExtra("EXTRA_STREAM_NAME") ?: "Kanal $streamId"
+        streamName = intent.getStringExtra("EXTRA_STREAM_NAME") ?: getString(R.string.channel_default_name, streamId)
         streamIcon = intent.getStringExtra("EXTRA_STREAM_ICON") ?: ""
         episodeIdList = intent.getIntegerArrayListExtra("EXTRA_EPISODE_LIST")
 
@@ -283,7 +283,9 @@ class PlayerActivity : BaseActivity() {
                 })
 
             } catch (e: Exception) {
-                showDetailedErrorDialog("Başlatma Hatası", e.message ?: "Bilinmeyen hata")
+                showDetailedErrorDialog(
+                    getString(R.string.title_init_error),
+                    e.message ?: getString(R.string.error_unknown))
             }
         }
     }
@@ -393,12 +395,12 @@ class PlayerActivity : BaseActivity() {
             if (isFav) {
                 db.favoriteDao().removeFavorite(streamId, streamType ?: "live")
                 isFav = false
-                Toast.makeText(this@PlayerActivity, "Favorilerden çıkarıldı", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@PlayerActivity, getString(R.string.msg_fav_removed), Toast.LENGTH_SHORT).show()
             } else {
                 val fav = Favorite(streamId = streamId, streamType = streamType ?: "live", name = streamName, image = streamIcon, categoryId = categoryId)
                 db.favoriteDao().addFavorite(fav)
                 isFav = true
-                Toast.makeText(this@PlayerActivity, "Favorilere eklendi", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@PlayerActivity, getString(R.string.msg_fav_added), Toast.LENGTH_SHORT).show()
             }
             updateFavIcon()
         }
@@ -413,16 +415,26 @@ class PlayerActivity : BaseActivity() {
         val title: String; var msg: String; val cause = error.cause
         when {
             error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED || error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED -> {
-                title = "Codec Hatası"
-                msg = "Hata kodu: 0x${Integer.toHexString(error.errorCode)}"
+                title = getString(R.string.title_codec_error)
+                msg = getString(R.string.error_code_msg, "0x${Integer.toHexString(error.errorCode)}")
                 lifecycleScope.launch { kotlinx.coroutines.delay(2000); tryLowerQuality() }
             }
             cause is HttpDataSource.InvalidResponseCodeException -> {
-                title = "Sunucu Hatası (${cause.responseCode})"
-                msg = when (cause.responseCode) { 404 -> "Dosya bulunamadı."; 403 -> "Erişim reddedildi."; else -> "Sunucu hatası." }
+                title = getString(R.string.title_server_error, cause.responseCode)
+                msg = when (cause.responseCode) {
+                    404 -> getString(R.string.error_file_not_found)
+                    403 -> getString(R.string.error_access_denied)
+                    else -> getString(R.string.error_server_generic)
+                }
             }
-            error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> { title = "İnternet Yok"; msg = "Bağlantı hatası." }
-            else -> { title = "Oynatma Hatası"; msg = "Hata: ${error.message ?: "Bilinmeyen"}" }
+            error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> {
+                title = getString(R.string.title_no_internet)
+                msg = getString(R.string.error_connection_failed)
+            }
+            else -> {
+                title = getString(R.string.title_playback_error)
+                msg = getString(R.string.error_code_msg, error.message ?: getString(R.string.label_unknown))
+            }
         }
         showDetailedErrorDialog(title, msg)
     }
@@ -444,27 +456,50 @@ class PlayerActivity : BaseActivity() {
                 selectTrack(C.TRACK_TYPE_VIDEO, it.second.groupIndex, it.second.trackIndex, it.second.rendererIndex)
                 val currentPos = player?.currentPosition ?: 0
                 player?.seekTo(currentPos); player?.prepare(); player?.play()
-                Toast.makeText(this, "Kalite düşürüldü.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.msg_quality_lowered), Toast.LENGTH_SHORT).show()
             }
         } catch (e: Exception) { android.util.Log.e("PlayerActivity", "Kalite düşürme hatası", e) }
     }
 
     private fun showDetailedErrorDialog(title: String, message: String) {
-        if (!isFinishing) AlertDialog.Builder(this).setTitle("⚠️ $title").setMessage("$message").setPositiveButton("Tamam") { d, _ -> d.dismiss(); finish() }.setCancelable(false).show()
+        if (!isFinishing) AlertDialog.Builder(this)
+            .setTitle("⚠️ $title")
+            .setMessage("$message")
+            .setPositiveButton(getString(R.string.btn_ok)) { d, _ -> d.dismiss(); finish() }
+            .setCancelable(false)
+            .show()
     }
 
     private fun showSettingsDialog() {
-        val options = arrayOf("Görüntü Kalitesi", "Ses Dili")
-        AlertDialog.Builder(this).setTitle("Ayarlar").setItems(options) { _, w -> when (w) { 0 -> showTrackSelectionDialog(C.TRACK_TYPE_VIDEO, "Çözünürlük"); 1 -> showTrackSelectionDialog(C.TRACK_TYPE_AUDIO, "Ses") } }.show()
+        val options = arrayOf(
+            getString(R.string.option_video_quality),
+            getString(R.string.option_audio_lang)
+        )
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.title_settings))
+            .setItems(options) { _, w ->
+                when (w) {
+                    0 -> showTrackSelectionDialog(C.TRACK_TYPE_VIDEO, getString(R.string.title_resolution));
+                    1 -> showTrackSelectionDialog(C.TRACK_TYPE_AUDIO, getString(R.string.title_audio))
+                }
+            }.show()
     }
 
     private fun showSubtitleDialog() {
         val tracks = getTracksByType(C.TRACK_TYPE_TEXT)
         val items = tracks.map { it.name }.toMutableList()
-        items.add(0, "Kapat"); items.add("📂 Dosyadan Yükle...")
-        AlertDialog.Builder(this).setTitle("Altyazı Seç").setItems(items.toTypedArray()) { _, w ->
-            if (w == 0) disableTrack(C.TRACK_TYPE_TEXT) else if (w <= tracks.size) { val t = tracks[w - 1]; selectTrack(C.TRACK_TYPE_TEXT, t.groupIndex, t.trackIndex, t.rendererIndex) } else openFilePicker()
-        }.show()
+        items.add(0, getString(R.string.option_off))
+        items.add(getString(R.string.option_load_from_file))
+
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.title_select_subtitle))
+            .setItems(items.toTypedArray()) { _, w ->
+                if (w == 0) disableTrack(C.TRACK_TYPE_TEXT)
+                else if (w <= tracks.size) {
+                    val t = tracks[w - 1];
+                    selectTrack(C.TRACK_TYPE_TEXT, t.groupIndex, t.trackIndex, t.rendererIndex)
+                } else openFilePicker()
+            }.show()
     }
 
     data class TrackInfo(val name: String, val groupIndex: Int, val trackIndex: Int, val rendererIndex: Int)
@@ -472,6 +507,7 @@ class PlayerActivity : BaseActivity() {
     private fun getTracksByType(type: Int): List<TrackInfo> {
         val list = mutableListOf<TrackInfo>()
         val info = trackSelector?.currentMappedTrackInfo ?: return emptyList()
+
         for (i in 0 until info.rendererCount) {
             if (info.getRendererType(i) == type) {
                 val groups = info.getTrackGroups(i)
@@ -480,7 +516,20 @@ class PlayerActivity : BaseActivity() {
                     for (k in 0 until group.length) {
                         if (info.getTrackSupport(i, j, k) == C.FORMAT_HANDLED) {
                             val f = group.getFormat(k)
-                            val name = when (type) { C.TRACK_TYPE_VIDEO -> "${f.width}x${f.height}"; C.TRACK_TYPE_AUDIO -> "${f.language ?: "und"}"; C.TRACK_TYPE_TEXT -> "${f.language ?: "und"} (${f.label ?: "Bilinmeyen"})"; else -> "?" }
+
+                            // DÜZELTİLEN KISIM:
+                            val name = when (type) {
+                                C.TRACK_TYPE_VIDEO -> "${f.width}x${f.height}"
+                                C.TRACK_TYPE_AUDIO -> "${f.language ?: "und"}"
+                                C.TRACK_TYPE_TEXT -> {
+                                    val lang = f.language ?: "und"
+                                    // Eğer etiket yoksa strings.xml'den "Bilinmeyen" çek
+                                    val label = f.label ?: getString(R.string.label_unknown)
+                                    "$lang ($label)"
+                                }
+                                else -> "?"
+                            }
+
                             list.add(TrackInfo(name, j, k, i))
                         }
                     }
@@ -492,7 +541,7 @@ class PlayerActivity : BaseActivity() {
 
     private fun showTrackSelectionDialog(type: Int, title: String) {
         val tracks = getTracksByType(type)
-        if (tracks.isEmpty()) { Toast.makeText(this, "Seçenek yok", Toast.LENGTH_SHORT).show(); return }
+        if (tracks.isEmpty()) { Toast.makeText(this, getString(R.string.msg_no_options), Toast.LENGTH_SHORT).show(); return }
         val items = tracks.map { it.name }.toTypedArray()
         AlertDialog.Builder(this).setTitle(title).setItems(items) { _, w -> val t = tracks[w]; selectTrack(type, t.groupIndex, t.trackIndex, t.rendererIndex) }.show()
     }
@@ -502,12 +551,12 @@ class PlayerActivity : BaseActivity() {
         val rIdx = r ?: (0 until info.rendererCount).find { info.getRendererType(it) == type } ?: return
         val override = TrackSelectionOverride(info.getTrackGroups(rIdx)[g], t)
         trackSelector?.parameters = trackSelector!!.buildUponParameters().setOverrideForType(override).build()
-        Toast.makeText(this, "Seçildi", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.msg_selected), Toast.LENGTH_SHORT).show()
     }
 
     private fun disableTrack(type: Int) {
         trackSelector?.parameters = trackSelector!!.buildUponParameters().setTrackTypeDisabled(type, true).build()
-        Toast.makeText(this, "Kapatıldı", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.msg_disabled), Toast.LENGTH_SHORT).show()
     }
 
     private fun openFilePicker() {
@@ -522,7 +571,7 @@ class PlayerActivity : BaseActivity() {
         val newMedia = media.buildUpon().setSubtitleConfigurations(listOf(sub)).build()
         val pos = player?.currentPosition ?: 0
         player?.setMediaItem(newMedia); player?.seekTo(pos); player?.prepare(); player?.play()
-        Toast.makeText(this, "Yüklendi", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, getString(R.string.msg_loaded), Toast.LENGTH_SHORT).show()
     }
 
     private fun saveProgress() {
@@ -538,6 +587,53 @@ class PlayerActivity : BaseActivity() {
             db.interactionDao().logInteraction(interact)
         }
     }
+    // --- PIP (Pencere İçinde Pencere) MODU BAŞLANGICI ---
+
+    // 1. Kullanıcı uygulamadan çıkarken (Home tuşu veya Gesture) PiP'i tetikle
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            // Eğer player oynuyorsa PiP moduna gir
+            if (player != null && player!!.isPlaying) {
+                // 16:9 Oranında bir pencere ayarla
+                val aspectRatio = android.util.Rational(16, 9)
+                val params = android.app.PictureInPictureParams.Builder()
+                    .setAspectRatio(aspectRatio)
+                    .build()
+                enterPictureInPictureMode(params)
+            }
+        }
+    }
+
+    // 2. PiP Moduna girip çıkarken ekranı düzenle (Butonları gizle/göster)
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+
+        if (isInPictureInPictureMode) {
+            // PiP Moduna GİRDİ: Kontrolleri GİZLE
+            playerView?.useController = false // Player çubuğunu kapat
+            btnBack.visibility = View.GONE
+            btnSettings.visibility = View.GONE
+            btnSubtitle.visibility = View.GONE
+            btnFavoritePlayer.visibility = View.GONE
+            topControls?.visibility = View.GONE
+            textNetworkSpeed.visibility = View.GONE
+            textResolution.visibility = View.GONE
+            btnNextEpisode.visibility = View.GONE
+        } else {
+            // PiP Modundan ÇIKTI: Kontrolleri GÖSTER
+            playerView?.useController = true // Player çubuğunu aç
+            btnBack.visibility = View.VISIBLE
+            // Diğer butonların görünürlüğü, önceki durumlarına göre ayarlanmalı
+            // Basitçe görünür yapabiliriz veya playerView listener'ı zaten halleder.
+            // Biz sadece ana butonları açalım:
+            if (streamType != "series") {
+                btnFavoritePlayer.visibility = View.VISIBLE
+            }
+            // Controller listener tetiklendiğinde diğerleri düzelir
+        }
+    }
+    // --- PIP MODU BİTİŞİ ---
 
     override fun onStop() { super.onStop(); handler.removeCallbacks(progressRunnable); saveProgress(); player?.release(); player = null }
 }

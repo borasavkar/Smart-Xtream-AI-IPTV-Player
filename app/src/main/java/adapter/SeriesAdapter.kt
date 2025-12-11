@@ -36,7 +36,10 @@ class SeriesAdapter(private val listener: OnSeriesClickListener) :
         private val epgText: TextView = itemView.findViewById(R.id.text_epg_now)
 
         fun bind(series: SeriesStream, listener: OnSeriesClickListener) {
-            nameText.text = series.name ?: "İsimsiz Dizi"
+            // DÜZELTME: Sabit metin yerine çeviri kaynağı kullanıldı
+            val context = itemView.context
+            nameText.text = series.name ?: context.getString(R.string.untitled_series)
+
             epgText.visibility = View.GONE
 
             val imageUrl = series.cover ?: series.streamIcon

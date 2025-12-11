@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Smart Xtream AI: IPTV Player</string>
+    <string name="title_live">بث مباشر</string>
+    <string name="title_movies">أفلام</string>
+    <string name="title_series">مسلسلات</string>
+    <string name="btn_profile">الملف الشخصي</string>
+    <string name="btn_watch_now">شاهد الآن</string>
+    <string name="btn_trailer">الإعلان الترويجي</string>
+    <string name="btn_back">رجوع</string>
+    <string name="btn_save">حفظ الملف</string>
+    <string name="btn_add_new">إضافة جديد</string>
+    <string name="btn_manage">إدارة</string>
+    <string name="btn_edit">تعديل</string>
+    <string name="btn_delete">حذف</string>
+    <string name="btn_cancel">إلغاء</string>
+    <string name="btn_yes">نعم</string>
+    <string name="btn_ok">حسناً</string>
+    <string name="btn_update">تحديث الملف</string>
+    <string name="text_connected">متصل</string>
+    <string name="status_connected">متصل</string>
+    <string name="status_connecting">جارِ الاتصال…</string>
+    <string name="status_not_connected">غير متصل</string>
+    <string name="text_not_connected">غير متصل</string>
+    <string name="status_login_error">خطأ في الدخول</string>
+    <string name="text_login_error">خطأ في الدخول</string>
+    <string name="status_server_error">لا يوجد خادم</string>
+    <string name="text_server_error">لا يوجد خادم</string>
+    <string name="status_no_profile">لا يوجد ملف</string>
+    <string name="text_no_profile">لا يوجد ملف</string>
+    <string name="status_unlimited">غير محدود</string>
+    <string name="status_expired">منتهية الصلاحية</string>
+    <string name="header_recommendations">مختارات لك</string>
+    <string name="text_recent_channels">أحدث القنوات</string>
+    <string name="header_recent_channels">أحدث القنوات</string>
+    <string name="text_live_recommendations">لك: بث مباشر</string>
+    <string name="header_live_recommendations">لك: بث مباشر</string>
+    <string name="text_movie_recommendations">أفلام قد تعجبك</string>
+    <string name="header_movie_recommendations">أفلام قد تعجبك</string>
+    <string name="text_series_recommendations">مسلسلات للمشاهدة المتواصلة</string>
+    <string name="header_series_recommendations">مسلسلات للمشاهدة المتواصلة</string>
+    <string name="header_episodes">الحلقات</string>
+    <string name="label_plot">الملخص</string>
+    <string name="label_cast">الممثلون</string>
+    <string name="label_director">المخرج</string>
+    <string name="label_rating">IMDB:</string>
+    <string name="hint_search_category">بحث عن فئة…</string>
+    <string name="hint_search_channel">بحث عن قناة…</string>
+    <string name="hint_search_movie">بحث عن فيلم…</string>
+    <string name="hint_search_series">بحث عن مسلسل…</string>
+    <string name="title_add_profile">إضافة ملف شخصي</string>
+    <string name="title_favorites">مفضلاتي</string>
+    <string name="radio_xtream">Xtream Codes</string>
+    <string name="radio_m3u">قائمة M3U</string>
+    <string name="hint_profile_name">اسم الملف (مثال: سينما المنزل)</string>
+    <string name="hint_username">اسم المستخدم</string>
+    <string name="hint_password">كلمة المرور</string>
+    <string name="hint_server_url">رابط الخادم (http://url.com:port)</string>
+    <string name="hint_m3u_url">رابط قائمة M3U</string>
+    <string name="msg_fill_fields">يرجى ملء الحقول</string>
+    <string name="msg_profile_saved">تم حفظ الملف!</string>
+    <string name="settings_title">إعدادات التطبيق</string>
+    <string name="settings_audio_lang">لغة الصوت</string>
+    <string name="settings_subtitle_lang">لغة الترجمة</string>
+    <string name="settings_saved">تم حفظ الإعدادات</string>
+    <string name="settings_default_audio">الصوت الافتراضي</string>
+    <string name="settings_default_subtitle">الترجمة الافتراضية</string>
+    <string name="error_title">⚠️ خطأ</string>
+    <string name="error_server_message">هذا الخطأ من المصدر وليس من التطبيق.</string>
+    <string name="error_no_internet">لا يوجد إنترنت</string>
+    <string name="error_timeout">انتهى الوقت</string>
+    <string name="error_not_found">المصدر غير موجود</string>
+    <string name="error_player_init">خطأ في التشغيل</string>
+    <string name="msg_loading">جارِ التحميل…</string>
+    <string name="msg_select_profile">يرجى اختيار ملف شخصي أولاً</string>
+    <string name="msg_confirm_delete">هل أنت متأكد أنك تريد حذف هذا الملف؟</string>
+    <string name="desc_app_logo">شعار التطبيق</string>
+    <string name="sub_settings">إعدادات الترجمة</string>
+    <string name="image_sound_settings">إعدادات الصوت والصورة</string>
+    <string name="btn_next_episode">الحلقة التالية ⏭</string>
+    <string name="btn_skip_intro">تخطي المقدمة ⏩</string>
+    <string name="favorilerim">المفضلة</string>
+    <string name="btn_add_favorites">إضافة للمفضلة</string>
+    <string name="my_favorites">مفضلاتي</string>
+    <string name="upcoming_matchs"><![CDATA[المباريات والرياضات القادمة]]></string>
+    <string name="Recently_added_new_episodes">أضيفت مؤخراً (جديد)</string>
+    <string name="img_logo_desc">وصف الشعار</string>
+    <string name="btn_favorites_desc">زر المفضلة</string>
+    <string name="btn_global_settings_desc">زر الإعدادات</string>
+    <string name="film_name">اسم الفيلم</string>
+    <string name="channel_icon">شعار القناة</string>
+    <string name="text_network_speed">0 ك.ب/ث</string>
+    <string name="desc_poster">ملصق الفيلم</string>
+    <string name="sample_film_name">مثال اسم الفيلم</string>
+    <string name="network_speed">سرعة الاتصال</string>
+    <string name="tv">تلفاز</string>
+    <string name="film_header">عنوان الفيلم</string>
+    <string name="action">أكشن</string>
+    <string name="watch">⏵ مشاهدة</string>
+    <string name="fragman">إعلان</string>
+    <string name="summary">ملخص</string>
+    <string name="film_plot">قصة الفيلم…</string>
+    <string name="cast">الممثلون</string>
+    <string name="dash">-</string>
+    <string name="imdb">8.5 / 10</string>
+    <string name="search_subtitle_online">🌐 بحث عن ترجمة أونلاين</string>
+    <string name="img_poster">ملصق</string>
+    <string name="movie_header">عنوان الفيلم</string>
+    <string name="imdb_rating">8.5 / 10</string>
+    <string name="action_adventure">أكشن، مغامرة</string>
+    <string name="watch_now">شاهد الآن</string>
+    <string name="trailer">الإعلان</string>
+    <string name="movie_plot_loading">جارِ تحميل القصة…</string>
+    <string name="director">المخرج</string>
+    <string name="minus">-</string>
+    <string name="line_vertical">|</string>
+    <string name="series_header">عنوان المسلسل</string>
+    <string name="imdb_8_5_action">IMDB: 8.5 | أكشن</string>
+    <string name="series_plot">قصة المسلسل…</string>
+    <string name="series_plot_will_be_here">ستظهر قصة المسلسل هنا…</string>
+    <string name="title_matches">مباريات اليوم</string>
+    <string name="title_latest">آخر الإضافات</string>
+    <string name="error_stream_not_found">البث غير موجود أو غير متصل.</string>
+    <string name="TV">تلفاز</string>
+    <string name="annual_subscription_with_advantage">اشتراك سنوي (توفير)</string>
+    <string name="lifeTime_subscription">دخول مدى الحياة</string>
+    <string name="tria_exp_text">انتهت الفترة التجريبية، يجب الاشتراك للمتابعة.</string>
+    <string name="monthly_subscription">اشتراك شهري</string>
+    <string name="open_premium_properties">فتح ميزات بريميوم</string>
+    <string name="premium">بريميوم</string>
+    <string name="close">إغلاق</string>
+    <string name="no_input_in_category">لا يوجد محتوى في هذه الفئة.</string>
+    <string name="title_edit_profile">تعديل الملف</string>
+    <string name="btn_update_profile">تحديث الملف</string>
+    <string name="error_profile_name_empty">لا يمكن ترك اسم الملف فارغاً</string>
+    <string name="error_username_empty">لا يمكن ترك اسم المستخدم فارغاً</string>
+    <string name="error_invalid_url">أدخل رابطاً صحيحاً (http://…)</string>
+    <string name="msg_profile_updated">تم تحديث الملف</string>
+    <string name="error_login_failed_check">فشل الدخول: تحقق من المعلومات.</string>
+    <string name="error_network_connection">خطأ في الشبكة: تعذر الاتصال بالخادم.</string>
+    <string name="text_genre_default">عام</string>
+    <string name="text_no_description">لا يوجد وصف لهذا المحتوى.</string>
+    <string name="text_no_info">لا توجد معلومات</string>
+    <string name="text_season">موسم</string>
+    <string name="text_episode">حلقة</string>
+    <string name="text_duration_min">دقيقة</string>
+    <string name="error_fetch_details">تعذر الحصول على التفاصيل.</string>
+    <string name="msg_fav_added">تمت الإضافة للمفضلة</string>
+    <string name="msg_fav_removed">تم الحذف من المفضلة</string>
+    <string name="wait">انتظر…</string>
+    <string name="msg_premium_active">بريميوم مفعل! شكراً لك.</string>
+    <string name="msg_purchase_success">تم الشراء بنجاح!</string>
+    <string name="msg_connecting">جارِ الاتصال، يرجى الانتظار…</string>
+    <string name="format_monthly_sub">اشتراك شهري (%1$s)</string>
+    <string name="format_yearly_sub">اشتراك سنوي (توفير) (%1$s)</string>
+    <string name="format_lifetime_sub">دخول مدى الحياة (%1$s)</string>
+    <string name="fmt_btn_monthly">اشتراك شهري (%1$s)</string>
+    <string name="fmt_btn_yearly">اشتراك سنوي (توفير) (%1$s)</string>
+    <string name="fmt_btn_lifetime">دخول مدى الحياة (%1$s)</string>
+    <string name="status_watched">✔ تمت المشاهدة</string>
+    <string name="status_paused_at">⏸ توقف عند الدقيقة %d</string>
+    <string name="default_profile_name">الملف الشخصي</string>
+    <string name="error_missing_profile_data">بيانات الملف الشخصي ناقصة.</string>
+    <string name="error_search_no_result">لم يتم العثور على نتائج لـ \'%1$s\'.</string>
+    <string name="error_no_channel_in_category">لا توجد قنوات في هذه الفئة.</string>
+    <string name="error_server_connection">تعذر الاتصال بالخادم.</string>
+    <string name="error_channel_list_fetch">تعذر جلب قائمة القنوات. الخطأ: %1$s</string>
+    <string name="error_profile_load_failed">تعذر تحميل بيانات الملف الشخصي.</string>
+    <string name="type_live">مباشر</string>
+    <string name="type_movie">فيلم</string>
+    <string name="type_series">مسلسل</string>
+    <string name="channel_default_name">القناة %1$d</string>
+    <string name="title_init_error">خطأ في البدء</string>
+    <string name="error_unknown">خطأ غير معروف</string>
+    <string name="title_codec_error">خطأ في الترميز (Codec)</string>
+    <string name="error_code_msg">رمز الخطأ: %1$s</string>
+    <string name="title_server_error">خطأ في الخادم (%1$d)</string>
+    <string name="error_file_not_found">الملف غير موجود.</string>
+    <string name="error_access_denied">تم رفض الوصول.</string>
+    <string name="error_server_generic">خطأ في الخادم.</string>
+    <string name="title_no_internet">لا يوجد إنترنت</string>
+    <string name="error_connection_failed">خطأ في الاتصال.</string>
+    <string name="title_playback_error">خطأ في التشغيل</string>
+    <string name="msg_quality_lowered">تم تقليل الجودة.</string>
+    <string name="title_settings">الإعدادات</string>
+    <string name="option_video_quality">جودة الفيديو</string>
+    <string name="option_audio_lang">لغة الصوت</string>
+    <string name="title_resolution">الدقة</string>
+    <string name="title_audio">الصوت</string>
+    <string name="title_select_subtitle">اختر الترجمة</string>
+    <string name="option_off">إيقاف</string>
+    <string name="option_load_from_file">📂 تحميل ملف…</string>
+    <string name="label_unknown">غير معروف</string>
+    <string name="msg_no_options">لا توجد خيارات</string>
+    <string name="msg_selected">تم الاختيار</string>
+    <string name="msg_disabled">تم التعطيل</string>
+    <string name="msg_loaded">تم التحميل</string>
+    <string name="error_profile_error">خطأ في الملف الشخصي</string>
+    <string name="category_all_movies">كل الأفلام</string>
+    <string name="msg_content_not_found_or_loaded">المحتوى غير موجود أو لم يتم تحميله.</string>
+    <string name="error_vod_list_fetch">فشل جلب قائمة الأفلام: %1$s</string>
+    <string name="error_connection_msg">خطأ اتصال: %1$s</string>
+    <string name="format_category_default">الفئة %1$s</string>
+    <string name="error_category_not_found">الفئة غير موجودة</string>
+    <string name="error_generic_prefix">خطأ: %1$s</string>
+    <string name="msg_no_channels_in_category">لا توجد قنوات في هذه الفئة.</string>
+    <string name="label_live_stream">بث مباشر</string>
+    <string name="msg_trial_expired">انتهت الفترة التجريبية.</string>
+    <string name="btn_no">لا</string>
+    <string name="menu_refresh">🔄 تحديث المحتوى</string>
+    <string name="msg_refreshing">جارِ التحديث…</string>
+    <string name="date_invalid">تاريخ غير صالح</string>
+    <string name="msg_connecting_retry">جارِ الاتصال، يرجى المحاولة مرة أخرى…</string>
+    <string name="channel_untitled">بدون عنوان</string>
+    <string name="untitled_movie">فيلم بدون عنوان</string>
+    <string name="untitled_series">مسلسل بدون عنوان</string>
+    <string name="format_series_info">%1$s %2$s | %3$s</string>
+    <string name="category_all_series">كل المسلسلات</string>
+    <string name="msg_content_not_found">لم يتم العثور على محتوى.</string>
+</resources>

@@ -1,10 +1,8 @@
 <resources>
     <string name="app_name">Smart Xtream AI: IPTV Player</string>
-
     <string name="title_live">Live</string>
     <string name="title_movies">Filme</string>
     <string name="title_series">Serien</string>
-
     <string name="btn_profile">Profil</string>
     <string name="btn_watch_now">JETZT ANSEHEN</string>
     <string name="btn_trailer">TRAILER</string>
@@ -18,7 +16,6 @@
     <string name="btn_yes">Ja</string>
     <string name="btn_ok">OK</string>
     <string name="btn_update">Profil aktualisieren</string>
-
     <string name="text_connected">Verbunden</string>
     <string name="status_connected">Verbunden</string>
     <string name="status_connecting">Verbinde…</string>
@@ -32,7 +29,6 @@
     <string name="text_no_profile">Kein Profil</string>
     <string name="status_unlimited">Unbegrenzt</string>
     <string name="status_expired">Abgelaufen</string>
-
     <string name="header_recommendations">Für Sie empfohlen</string>
     <string name="text_recent_channels">Zuletzt hinzugefügte Kanäle</string>
     <string name="header_recent_channels">Zuletzt hinzugefügte Kanäle</string>
@@ -43,17 +39,14 @@
     <string name="text_series_recommendations">Serien zum Bingen</string>
     <string name="header_series_recommendations">Serien zum Bingen</string>
     <string name="header_episodes">EPISODEN</string>
-
     <string name="label_plot">INHALT</string>
     <string name="label_cast">BESETZUNG</string>
     <string name="label_director">REGIE</string>
     <string name="label_rating">IMDB:</string>
-
     <string name="hint_search_category">Kategorie suchen…</string>
     <string name="hint_search_channel">Kanal suchen…</string>
     <string name="hint_search_movie">Film suchen…</string>
     <string name="hint_search_series">Serie suchen…</string>
-
     <string name="title_add_profile">Profil hinzufügen</string>
     <string name="title_favorites">Meine Favoriten</string>
     <string name="radio_xtream">Xtream Codes</string>
@@ -65,14 +58,12 @@
     <string name="hint_m3u_url">M3U-Playlist-URL</string>
     <string name="msg_fill_fields">Bitte füllen Sie die Felder aus</string>
     <string name="msg_profile_saved">Profil gespeichert!</string>
-
     <string name="settings_title">App-Einstellungen</string>
     <string name="settings_audio_lang">Audiosprache</string>
     <string name="settings_subtitle_lang">Untertitelsprache</string>
     <string name="settings_saved">Einstellungen gespeichert</string>
     <string name="settings_default_audio">Standard-Audio</string>
     <string name="settings_default_subtitle">Standard-Untertitel</string>
-
     <string name="error_title">⚠️ Fehler</string>
     <string name="error_server_message">Dieser Fehler stammt von der Sendequelle, nicht von der App.</string>
     <string name="error_no_internet">Kein Internet</string>
@@ -82,7 +73,6 @@
     <string name="msg_loading">Laden…</string>
     <string name="msg_select_profile">Bitte wählen Sie zuerst ein Profil</string>
     <string name="msg_confirm_delete">Möchten Sie dieses Profil wirklich löschen?</string>
-
     <string name="desc_app_logo">App-Logo</string>
     <string name="sub_settings">Untertitel-Einstellungen</string>
     <string name="image_sound_settings">Video- und Audio-Einstellungen</string>
@@ -157,4 +147,73 @@
     <string name="msg_fav_added">Zu Favoriten hinzugefügt</string>
     <string name="msg_fav_removed">Aus Favoriten entfernt</string>
     <string name="wait">Warten…</string>
+    <string name="msg_premium_active">Premium Aktiv! Danke.</string>
+    <string name="msg_purchase_success">Kauf erfolgreich!</string>
+    <string name="msg_connecting">Verbindung wird hergestellt, bitte warten…</string>
+    <string name="format_monthly_sub">Monatliches Abo (%1$s)</string>
+    <string name="format_yearly_sub">Jahresabo (Vorteil) (%1$s)</string>
+    <string name="format_lifetime_sub">Lebenslanger Zugriff (%1$s)</string>
+    <string name="fmt_btn_monthly">Monatliches Abo (%1$s)</string>
+    <string name="fmt_btn_yearly">Jahresabo (Vorteil) (%1$s)</string>
+    <string name="fmt_btn_lifetime">Lebenslanger Zugriff (%1$s)</string>
+    <string name="status_watched">✔ GESEHEN</string>
+    <string name="status_paused_at">⏸ Bei %d Min. fortsetzen</string>
+    <string name="default_profile_name">Profil</string>
+    <string name="error_missing_profile_data">Profildaten fehlen.</string>
+    <string name="error_search_no_result">Keine Ergebnisse für \'%1$s\' gefunden.</string>
+    <string name="error_no_channel_in_category">Keine Kanäle in dieser Kategorie gefunden.</string>
+    <string name="error_server_connection">Verbindung zum Server fehlgeschlagen.</string>
+    <string name="error_channel_list_fetch">Kanalliste konnte nicht abgerufen werden. Fehler: %1$s</string>
+    <string name="error_profile_load_failed">Profildaten konnten nicht geladen werden.</string>
+    <string name="type_live">Live</string>
+    <string name="type_movie">Film</string>
+    <string name="type_series">Serie</string>
+    <string name="channel_default_name">Channel %1$d</string>
+    <string name="title_init_error">Initialization Error</string>
+    <string name="error_unknown">Unknown error</string>
+    <string name="title_codec_error">Codec Error</string>
+    <string name="error_code_msg">Error code: %1$s</string>
+    <string name="title_server_error">Server Error (%1$d)</string>
+    <string name="error_file_not_found">File not found.</string>
+    <string name="error_access_denied">Access denied.</string>
+    <string name="error_server_generic">Server error.</string>
+    <string name="title_no_internet">No Internet</string>
+    <string name="error_connection_failed">Connection error.</string>
+    <string name="title_playback_error">Playback Error</string>
+    <string name="msg_quality_lowered">Quality lowered.</string>
+    <string name="title_settings">Settings</string>
+    <string name="option_video_quality">Video Quality</string>
+    <string name="option_audio_lang">Audio Language</string>
+    <string name="title_resolution">Resolution</string>
+    <string name="title_audio">Audio</string>
+    <string name="title_select_subtitle">Select Subtitle</string>
+    <string name="option_off">Off</string>
+    <string name="option_load_from_file">📂 Load from File…</string>
+    <string name="label_unknown">Unknown</string>
+    <string name="msg_no_options">No options</string>
+    <string name="msg_selected">Selected</string>
+    <string name="msg_disabled">Disabled</string>
+    <string name="msg_loaded">Loaded</string>
+    <string name="error_profile_error">Profilfehler</string>
+    <string name="category_all_movies">Alle Filme</string>
+    <string name="msg_content_not_found_or_loaded">Inhalt nicht gefunden oder konnte nicht geladen werden.</string>
+    <string name="error_vod_list_fetch">Filmliste konnte nicht abgerufen werden: %1$s</string>
+    <string name="error_connection_msg">Verbindungsfehler: %1$s</string>
+    <string name="format_category_default">Kategorie %1$s</string>
+    <string name="error_category_not_found">Kategorie nicht gefunden</string>
+    <string name="error_generic_prefix">Fehler: %1$s</string>
+    <string name="msg_no_channels_in_category">Keine Kanäle in dieser Kategorie.</string>
+    <string name="label_live_stream">Live-Übertragung</string>
+    <string name="msg_trial_expired">Testzeitraum abgelaufen.</string>
+    <string name="btn_no">Nein</string>
+    <string name="menu_refresh">🔄 Inhalt aktualisieren</string>
+    <string name="msg_refreshing">Wird aktualisiert…</string>
+    <string name="date_invalid">Ungültiges Datum</string>
+    <string name="msg_connecting_retry">Verbindung wird hergestellt, bitte versuchen Sie es erneut…</string>
+    <string name="channel_untitled">Unbenannt</string>
+    <string name="untitled_movie">Unbenannter Film</string>
+    <string name="untitled_series">Unbenannte Serie</string>
+    <string name="format_series_info">%1$s %2$s | %3$s</string>
+    <string name="category_all_series">Alle Serien</string>
+    <string name="msg_content_not_found">Inhalt nicht gefunden.</string>
 </resources>

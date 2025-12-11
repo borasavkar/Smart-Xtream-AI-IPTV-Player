@@ -56,15 +56,21 @@ class FavoritesActivity : BaseActivity(), OnChannelClickListener {
                     val stream = LiveStream(
                         streamId = fav.streamId,
                         name = fav.name,
-                        streamIcon = fav.image, // Resim burada yükleniyor
+                        streamIcon = fav.image,
                         categoryId = fav.categoryId
                     )
-                    val typeLabel = when(fav.streamType) {
-                        "vod" -> "Film"
-                        "series" -> "Dizi"
-                        else -> "Canlı Yayın"
+
+                    // 1. GÖRÜNEN İSİM (Kullanıcı için çevrilir)
+                    val displayLabel = when(fav.streamType) {
+                        "vod" -> getString(R.string.type_movie)  // "Film" veya "Movie"
+                        "series" -> getString(R.string.type_series) // "Dizi" veya "Series"
+                        else -> getString(R.string.type_live)    // "Canlı Yayın" veya "Live"
                     }
-                    val dummyEpg = EpgListing("0", "0", typeLabel, "", "", "")
+
+                    // 2. TEKNİK İSİM (Kod için saklanır - fav.streamType: "vod", "series")
+                    // EpgListing'in son parametresi olan 'description' alanına teknik tipi saklıyoruz.
+                    val dummyEpg = EpgListing("0", "0", displayLabel, "", "", fav.streamType)
+
                     ChannelWithEpg(stream, dummyEpg)
                 }
                 adapter.submitList(list)
@@ -73,13 +79,7 @@ class FavoritesActivity : BaseActivity(), OnChannelClickListener {
     }
 
     override fun onChannelClick(channelWithEpg: ChannelWithEpg) {
-        val typeLabel = channelWithEpg.epgNow?.title ?: "live"
-        val type = when(typeLabel) {
-            "Film" -> "vod"
-            "Dizi" -> "series"
-            else -> "live"
-        }
-
+        val type = channelWithEpg.epgNow?.description ?: "live"
         if (type == "series") {
             val intent = Intent(this, SeriesDetailActivity::class.java).apply {
                 putExtra("EXTRA_SERVER_URL", serverUrl)

@@ -56,7 +56,8 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
         initViews()
 
         if (!getIntentData()) {
-            Toast.makeText(this, "Profil hatası", Toast.LENGTH_SHORT).show()
+            // DÜZELTME: Çevrilebilir hata mesajı
+            Toast.makeText(this, getString(R.string.error_profile_error), Toast.LENGTH_SHORT).show()
             finish()
             return
         }
@@ -129,10 +130,12 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
                 ContentCache.cachedMovies = allFilms
                 fetchCategoriesAndShow()
             } else {
-                showError("Film listesi alınamadı: ${vodResponse.code()}")
+                // DÜZELTME: Çevrilebilir hata mesajı + Hata kodu
+                showError(getString(R.string.error_vod_list_fetch, vodResponse.code().toString()))
             }
         } catch (e: Exception) {
-            showError("Bağlantı hatası: ${e.message}")
+            // DÜZELTME: Çevrilebilir bağlantı hatası
+            showError(getString(R.string.error_connection_msg, e.message ?: ""))
             allFilms = emptyList()
             fetchCategoriesAndShow() // Hata olsa bile devam et (Belki kategori gelir)
         }
@@ -155,7 +158,10 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
         if (allCategories.isEmpty() && allFilms.isNotEmpty()) {
             val catMap = HashMap<String, String>()
             allFilms.forEach {
-                if (it.categoryId != null) catMap[it.categoryId] = "Kategori ${it.categoryId}"
+                if (it.categoryId != null) {
+                    // DÜZELTME: "Kategori 1" gibi isimler çevrilebilir formatta
+                    catMap[it.categoryId] = getString(R.string.format_category_default, it.categoryId)
+                }
             }
             allCategories = catMap.map { LiveCategory(it.key, it.value, 0) }
         }
@@ -166,7 +172,8 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
     private suspend fun processAndShowData() {
         withContext(Dispatchers.Default) {
             val counts = HashMap<String, Int>()
-            val allCat = LiveCategory("0", "Tüm Filmler", 0)
+            // DÜZELTME: "Tüm Filmler" çevrildi
+            val allCat = LiveCategory("0", getString(R.string.category_all_movies), 0)
             val mutableCats = ArrayList<LiveCategory>()
             mutableCats.add(allCat)
             mutableCats.addAll(allCategories)
@@ -194,7 +201,10 @@ class FilmsActivity : BaseActivity(), OnCategoryClickListener, OnFilmClickListen
     private fun updateEmptyState(isEmpty: Boolean) {
         textEmptyState.visibility = if (isEmpty) View.VISIBLE else View.GONE
         recyclerFilms.visibility = if (isEmpty) View.GONE else View.VISIBLE
-        if (isEmpty) textEmptyState.text = "İçerik bulunamadı veya yüklenemedi."
+        if (isEmpty) {
+            // DÜZELTME: Çevrilebilir boş durum mesajı
+            textEmptyState.text = getString(R.string.msg_content_not_found_or_loaded)
+        }
     }
 
     private fun performCategorySearch(txt: String, isAuto: Boolean) {

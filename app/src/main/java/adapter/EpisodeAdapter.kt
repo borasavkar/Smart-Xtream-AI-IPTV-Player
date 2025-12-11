@@ -50,12 +50,12 @@ class EpisodeAdapter(private val listener: OnEpisodeClickListener) :
 
             if (interaction != null) {
                 if (interaction.isFinished) {
-                    infoText.text = "✔ İZLENDİ"
+                    infoText.text = infoText.context.getString(R.string.status_watched)
                     infoText.setTextColor(Color.GREEN)
                 } else if (interaction.lastPosition > 0) {
                     // Dakikaya çevir
                     val min = interaction.lastPosition / 60000
-                    infoText.text = "⏸ $min. dakikada kaldın"
+                    infoText.text = infoText.context.getString(R.string.status_paused_at, min)
                     infoText.setTextColor(Color.CYAN)
                 } else {
                     infoText.text = ""

@@ -108,13 +108,13 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
 
                     // --- DÜZELTME BAŞLANGICI: Strings.xml kullanımı ---
                     textTitle.text = currentSeriesName
-                    textPlot.text = if (info?.plot.isNullOrEmpty()) getString(R.string.text_no_description) else info?.plot
+                    textPlot.text = if (info?.plot.isNullOrEmpty()) getString(R.string.text_no_description) else info.plot
 
                     val labelRating = getString(R.string.label_rating) // "IMDB:"
                     val rating = info?.rating ?: "N/A"
                     val genre = info?.genre ?: getString(R.string.text_genre_default) // "Genel"
 
-                    textInfo.text = "$labelRating $rating | $genre"
+                    textInfo.text = getString(R.string.format_series_info, labelRating, rating, genre)
                     // --- DÜZELTME BİTİŞİ ---
 
                     if (currentSeriesImage.isNotEmpty()) {
@@ -129,6 +129,9 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
                 }
                 progressBar.visibility = View.GONE
             } catch (e: Exception) {
+                // Hatayı Logcat'e bas (Sadece geliştirici görür)
+                android.util.Log.e("SeriesDetail", "Dizi detayı hatası", e)
+
                 progressBar.visibility = View.GONE
                 Toast.makeText(this@SeriesDetailActivity, getString(R.string.error_fetch_details), Toast.LENGTH_SHORT).show()
             }

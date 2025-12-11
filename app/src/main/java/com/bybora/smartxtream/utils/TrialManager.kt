@@ -2,6 +2,7 @@ package com.bybora.smartxtream.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 
 object TrialManager {
     private const val PREFS_NAME = "TrialPrefs"
@@ -10,6 +11,7 @@ object TrialManager {
     // 14 Gün (Milisaniye cinsinden hesaplama)
     // 14 gün * 24 saat * 60 dakika * 60 saniye * 1000 milisaniye
     private const val TRIAL_DURATION_MS = 14L * 24 * 60 * 60 * 1000
+
 
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -22,7 +24,7 @@ object TrialManager {
         // Uygulama ilk kez açılıyorsa şu anki zamanı kaydet
         if (firstRunTime == 0L) {
             firstRunTime = System.currentTimeMillis()
-            prefs.edit().putLong(KEY_FIRST_RUN_TIME, firstRunTime).apply()
+            prefs.edit { putLong(KEY_FIRST_RUN_TIME, firstRunTime) }
         }
 
         val currentTime = System.currentTimeMillis()

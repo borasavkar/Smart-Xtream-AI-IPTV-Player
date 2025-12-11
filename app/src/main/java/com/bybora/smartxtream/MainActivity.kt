@@ -27,7 +27,6 @@ import com.bybora.smartxtream.utils.SettingsManager
 import com.bybora.smartxtream.utils.TrialManager
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -86,7 +85,8 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         if (!isPremium) {
             val isTrialActive = TrialManager.checkTrialStatus(this)
             if (!isTrialActive) {
-                Toast.makeText(this, "Deneme süreniz bitti.", Toast.LENGTH_LONG).show()
+                // DÜZELTME: Çevrilebilir "Süre bitti" mesajı
+                Toast.makeText(this, getString(R.string.msg_trial_expired), Toast.LENGTH_LONG).show()
                 startActivity(Intent(this, SubscriptionActivity::class.java))
                 finish()
                 return
@@ -111,6 +111,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     activeProfile = null
                     ContentCache.clear()
                     clearBottomBar()
+                    // DÜZELTME: Çevrilebilir "Profil Yok" mesajı
                     textStatusProfileName.setText(R.string.text_no_profile)
                     startActivity(Intent(this@MainActivity, AddProfileActivity::class.java))
                 } else {
@@ -137,14 +138,18 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                 val response = apiService.authenticate(profile.username, profile.password)
                 if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
                     val expiry = response.body()?.userInfo?.expiryDate
+                    // DÜZELTME: Sınırsız metni çevrildi
                     textExpirationDate.text = if (expiry != null) formatTimestamp(expiry) else getString(R.string.status_unlimited)
+                    // DÜZELTME: Bağlı metni çevrildi
                     textConnectionStatus.setText(R.string.status_connected)
                     textConnectionStatus.setTextColor(getColor(R.color.green_success))
                 } else {
+                    // DÜZELTME: Hata mesajı çevrildi
                     textConnectionStatus.setText(R.string.status_login_error)
                     textConnectionStatus.setTextColor(getColor(android.R.color.holo_red_dark))
                 }
             } catch (e: Exception) {
+                // DÜZELTME: Hata mesajı çevrildi
                 textConnectionStatus.setText(R.string.status_server_error)
             }
         }
@@ -152,6 +157,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
 
     private fun deleteProfile(profile: Profile) {
         AlertDialog.Builder(this)
+            // DÜZELTME: Butonlar ve mesajlar çevrildi
             .setTitle(getString(R.string.btn_delete))
             .setMessage(getString(R.string.msg_confirm_delete))
             .setPositiveButton(getString(R.string.btn_yes)) { _, _ ->
@@ -209,6 +215,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     }
 
     private fun setupDashboardCards() {
+        // DÜZELTME: Kart başlıkları çevrildi
         cardTv.findViewById<TextView>(R.id.card_title).setText(R.string.title_live)
         cardFilms.findViewById<TextView>(R.id.card_title).setText(R.string.title_movies)
         cardSeries.findViewById<TextView>(R.id.card_title).setText(R.string.title_series)
@@ -244,18 +251,29 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     }
 
     private fun showGlobalSettingsDialog() {
-        val langOptions = arrayOf("Türkçe", "English", "Deutsch", "Français", "Russian", "Arabic")
-        val langCodes = arrayOf("tr", "en", "de", "fr", "ru", "ar")
+        val langOptions = arrayOf("Türkçe", "English", "Deutsch", "Français", "Russian", "Arabic","Español", "Português")
+        val langCodes = arrayOf("tr", "en", "de", "fr", "ru", "ar","es", "pt")
         val audioCode = SettingsManager.getAudioLang(this)
         val subCode = SettingsManager.getSubtitleLang(this)
         val audioName = langCodes.indexOf(audioCode).let { if(it == -1) "Türkçe" else langOptions[it] }
         val subName = langCodes.indexOf(subCode).let { if(it == -1) "Türkçe" else langOptions[it] }
-        val menuItems = arrayOf("${getString(R.string.settings_default_audio)}: $audioName", "${getString(R.string.settings_default_subtitle)}: $subName", "🔄 İçerikleri Yenile")
+
+        // DÜZELTME: Menü öğeleri çevrildi
+        val menuItems = arrayOf(
+            "${getString(R.string.settings_default_audio)}: $audioName",
+            "${getString(R.string.settings_default_subtitle)}: $subName",
+            getString(R.string.menu_refresh)
+        )
+
         AlertDialog.Builder(this).setTitle(getString(R.string.settings_title)).setItems(menuItems) { _, which ->
             when (which) {
                 0 -> showSelectionDialog(getString(R.string.settings_audio_lang), langOptions) { idx -> SettingsManager.setAudioLang(this, langCodes[idx]) }
                 1 -> showSelectionDialog(getString(R.string.settings_subtitle_lang), langOptions) { idx -> SettingsManager.setSubtitleLang(this, langCodes[idx]) }
-                2 -> { ContentCache.clear(); if(activeProfile!=null) loadAllContent(activeProfile!!); Toast.makeText(this, "Yenileniyor...", Toast.LENGTH_SHORT).show() }
+                2 -> {
+                    ContentCache.clear()
+                    if(activeProfile!=null) loadAllContent(activeProfile!!)
+                    Toast.makeText(this, getString(R.string.msg_refreshing), Toast.LENGTH_SHORT).show()
+                }
             }
         }.setPositiveButton(getString(R.string.btn_ok), null).show()
     }
@@ -265,6 +283,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
             .setTitle(title)
             .setItems(items) { _, which ->
                 onSelected(which)
+                // DÜZELTME: Çevrilebilir "Kaydedildi" mesajı
                 Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
                 showGlobalSettingsDialog()
             }
@@ -278,7 +297,12 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     val safeFavList = favList.filter { isSafeContent(it.name) }
                     safeFavList.map { fav ->
                         val stream = LiveStream(fav.streamId, fav.name, fav.image, fav.categoryId)
-                        val typeLabel = when(fav.streamType) { "vod"->"Film"; "series"->"Dizi"; else->"TV" }
+                        // DÜZELTME: Tür etiketleri çevrildi
+                        val typeLabel = when(fav.streamType) {
+                            "vod" -> getString(R.string.type_movie)
+                            "series" -> getString(R.string.type_series)
+                            else -> getString(R.string.type_live)
+                        }
                         ChannelWithEpg(stream, EpgListing("0", "0", typeLabel, "", "", ""))
                     }
                 }
@@ -316,7 +340,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     } else {
                         val apiService = RetrofitClient.createService(profile.serverUrl)
 
-                        // AYRI TRY-CATCH
                         try { val r = apiService.getLiveStreams(profile.username, profile.password); if (r.isSuccessful) ch = r.body() ?: emptyList() } catch (e: Exception) {}
                         try { val r = apiService.getVodStreams(profile.username, profile.password); if (r.isSuccessful) mv = r.body() ?: emptyList() } catch (e: Exception) {}
                         try { val r = apiService.getSeries(profile.username, profile.password); if (r.isSuccessful) sr = r.body() ?: emptyList() } catch (e: Exception) {}
@@ -352,33 +375,32 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     val newMovies = safeMovies.sortedByDescending { it.streamId }.take(10)
                     val newSeries = safeSeries.sortedByDescending { it.seriesId }.take(5)
                     val latest = mutableListOf<ChannelWithEpg>()
-                    newMovies.forEach { m -> latest.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", "Film", "", "", ""))) }
-                    newSeries.forEach { s -> latest.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", "Dizi", "", "", ""))) }
+                    // DÜZELTME: Türler çevrildi
+                    newMovies.forEach { m -> latest.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
+                    newSeries.forEach { s -> latest.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", getString(R.string.type_series), "", "", ""))) }
 
                     // ÖNERİLER (Sizin İçin Seçtiklerimiz)
                     val recs = mutableListOf<ChannelWithEpg>()
                     val myFavorites = favoriteDao.getAllFavorites().first()
 
                     if (myFavorites.isNotEmpty()) {
-                        // Kategori bazlı basit öneri (Çok karmaşık keyword analizini kaldırdım, performansı artırır)
                         val favCatIds = myFavorites.map { it.categoryId }.toSet()
-
                         val recMovies = safeMovies.filter { it.categoryId in favCatIds }.shuffled().take(10)
                         val recSeries = safeSeries.filter { it.categoryId in favCatIds }.shuffled().take(5)
 
-                        recMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", "Film", "", "", ""))) }
-                        recSeries.forEach { s -> recs.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", "Dizi", "", "", ""))) }
+                        recMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
+                        recSeries.forEach { s -> recs.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", getString(R.string.type_series), "", "", ""))) }
                     }
 
                     if (recs.isEmpty()) {
                         val trendingMovies = safeMovies.take(10)
-                        trendingMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", "Film", "", "", ""))) }
+                        trendingMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
                     }
 
                     val finalRecs = if (recs.isNotEmpty()) {
                         val combined = combineChannelsAndEpg(recs.map { it.channel }, epgList)
                         combined.mapIndexed { index, item ->
-                            if (recs[index].epgNow?.title == "Film" || recs[index].epgNow?.title == "Dizi") item.copy(epgNow = recs[index].epgNow) else item
+                            if (recs[index].epgNow?.title == getString(R.string.type_movie) || recs[index].epgNow?.title == getString(R.string.type_series)) item.copy(epgNow = recs[index].epgNow) else item
                         }
                     } else emptyList()
 
@@ -400,6 +422,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                 }
 
                 if (recommendedItems.isNotEmpty()) {
+                    // DÜZELTME: Başlık çevrildi
                     titleRecommendations.setText(R.string.header_recommendations)
                     recAdapter.submitList(recommendedItems)
                     titleRecommendations.visibility = View.VISIBLE; recyclerRecommendations.visibility = View.VISIBLE
@@ -411,6 +434,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
 
             } catch (e: Exception) {
                 progressBar.visibility = View.GONE
+                // DÜZELTME: Hata mesajı çevrildi
                 textConnectionStatus.setText(R.string.text_server_error)
             }
         }
@@ -454,10 +478,10 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         val type = channelWithEpg.epgNow?.title
         val id = channelWithEpg.channel.streamId
 
-        if (type == "Dizi") {
+        if (type == getString(R.string.type_series)) {
             val intent = Intent(this, SeriesDetailActivity::class.java).apply { putProfileExtras(activeProfile!!); putExtra("EXTRA_SERIES_ID", id) }
             startActivity(intent)
-        } else if (type == "Film") {
+        } else if (type == getString(R.string.type_movie)) {
             val intent = Intent(this, FilmDetailActivity::class.java).apply { putProfileExtras(activeProfile!!); putExtra("EXTRA_STREAM_ID", id) }
             startActivity(intent)
         } else {
@@ -480,13 +504,40 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         putExtra("EXTRA_IS_M3U", profile.isM3u)
     }
 
-    private fun showProfileSelectionDialog() { if (allProfiles.isEmpty()) { startActivity(Intent(this, AddProfileActivity::class.java)); return }; val profileNames = allProfiles.map { it.profileName }.toTypedArray(); AlertDialog.Builder(this).setTitle(getString(R.string.title_add_profile)).setItems(profileNames) { dialog, which -> selectProfile(allProfiles[which]); dialog.dismiss() }.setPositiveButton(getString(R.string.btn_add_new)) { dialog, _ -> startActivity(Intent(this, AddProfileActivity::class.java)); dialog.dismiss() }.setNeutralButton(getString(R.string.btn_manage)) { dialog, _ -> showManagementDialog() }.show() }
-    private fun showManagementDialog() { val profileNames = allProfiles.map { it.profileName }.toTypedArray(); AlertDialog.Builder(this).setTitle(getString(R.string.btn_manage)).setItems(profileNames) { _, which -> showActionDialog(allProfiles[which]) }.setNegativeButton(getString(R.string.btn_cancel), null).show() }
-    private fun showActionDialog(profile: Profile) { val options = arrayOf(getString(R.string.btn_edit), getString(R.string.btn_delete)); AlertDialog.Builder(this).setTitle(profile.profileName).setItems(options) { _, which -> when (which) { 0 -> editProfile(profile); 1 -> deleteProfile(profile) } }.show() }
+    // DÜZELTME: Diyalog başlıkları ve butonlar çevrildi
+    private fun showProfileSelectionDialog() {
+        if (allProfiles.isEmpty()) { startActivity(Intent(this, AddProfileActivity::class.java)); return }
+        val profileNames = allProfiles.map { it.profileName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.title_add_profile))
+            .setItems(profileNames) { dialog, which -> selectProfile(allProfiles[which]); dialog.dismiss() }
+            .setPositiveButton(getString(R.string.btn_add_new)) { dialog, _ -> startActivity(Intent(this, AddProfileActivity::class.java)); dialog.dismiss() }
+            .setNeutralButton(getString(R.string.btn_manage)) { dialog, _ -> showManagementDialog() }
+            .show()
+    }
+
+    private fun showManagementDialog() {
+        val profileNames = allProfiles.map { it.profileName }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(getString(R.string.btn_manage))
+            .setItems(profileNames) { _, which -> showActionDialog(allProfiles[which]) }
+            .setNegativeButton(getString(R.string.btn_cancel), null)
+            .show()
+    }
+
+    private fun showActionDialog(profile: Profile) {
+        val options = arrayOf(getString(R.string.btn_edit), getString(R.string.btn_delete))
+        AlertDialog.Builder(this)
+            .setTitle(profile.profileName)
+            .setItems(options) { _, which -> when (which) { 0 -> editProfile(profile); 1 -> deleteProfile(profile) } }
+            .show()
+    }
+
     private fun editProfile(profile: Profile) { val intent = Intent(this, AddProfileActivity::class.java).apply { putExtra("EXTRA_EDIT_ID", profile.id); putExtra("EXTRA_PROFILE_NAME", profile.profileName); putExtra("EXTRA_USERNAME", profile.username); putExtra("EXTRA_PASSWORD", profile.password); putExtra("EXTRA_SERVER_URL", profile.serverUrl) }; startActivity(intent) }
 
     private fun clearBottomBar() {
-        textConnectionStatus.setText(R.string.text_not_connected)
+        // DÜZELTME: Durum metinleri çevrildi
+        textConnectionStatus.setText(R.string.status_not_connected)
         textConnectionStatus.setTextColor(getColor(android.R.color.darker_gray))
         textStatusProfileName.setText(R.string.text_no_profile)
         textExpirationDate.text = "N/A"
@@ -497,7 +548,20 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private fun openFilmList() { activeProfile?.let { val intent = Intent(this, FilmsActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
     private fun openSeriesList() { activeProfile?.let { val intent = Intent(this, SeriesListActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
     private fun showProfileWarning() { Toast.makeText(this, getString(R.string.msg_select_profile), Toast.LENGTH_SHORT).show(); showProfileSelectionDialog() }
-    private fun formatTimestamp(timestamp: String): String { return try { val expiryLong = timestamp.toLong() * 1000; val date = Date(expiryLong); val sdf = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("tr")); sdf.timeZone = TimeZone.getDefault(); sdf.format(date) } catch (e: Exception) { "Geçersiz Tarih" } }
+
+    // DÜZELTME: Tarih formatı locale'e göre ayarlandı
+    private fun formatTimestamp(timestamp: String): String {
+        return try {
+            val expiryLong = timestamp.toLong() * 1000
+            val date = Date(expiryLong)
+            // Cihazın kendi diline göre ay ve gün ismi göster
+            val sdf = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
+            sdf.timeZone = TimeZone.getDefault()
+            sdf.format(date)
+        } catch (e: Exception) {
+            getString(R.string.date_invalid)
+        }
+    }
 
     private fun getYearFromName(name: String?): Int {
         if (name.isNullOrEmpty()) return 0

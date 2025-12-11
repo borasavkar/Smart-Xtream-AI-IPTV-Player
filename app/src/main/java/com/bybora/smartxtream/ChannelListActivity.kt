@@ -43,7 +43,8 @@ class ChannelListActivity : BaseActivity(), OnChannelClickListener {
         progressBar = findViewById(R.id.channel_list_progress)
 
         if (!getIntentData()) {
-            Toast.makeText(this, "Profil bilgileri yüklenemedi", Toast.LENGTH_LONG).show()
+            // Çeviriyi otomatik çeker
+            Toast.makeText(this, getString(R.string.error_profile_load_failed), Toast.LENGTH_LONG).show()
             finish()
             return
         }
@@ -85,7 +86,8 @@ class ChannelListActivity : BaseActivity(), OnChannelClickListener {
                 var channelList: List<LiveStream>? = if (channelsResponse != null && channelsResponse.isSuccessful) {
                     channelsResponse.body()
                 } else {
-                    showError("Kanal listesi alınamadı. Hata: ${channelsResponse?.code()}")
+                    // .toString() ekleyerek sayıyı yazı formatına çeviriyoruz, uyarı gidiyor.
+                    showError(getString(R.string.error_channel_list_fetch, channelsResponse?.code().toString()))
                     null
                 }
 
@@ -102,12 +104,12 @@ class ChannelListActivity : BaseActivity(), OnChannelClickListener {
                     channelAdapter.submitList(combinedList)
                     showLoading(false)
                 } else {
-                    if (!searchQuery.isNullOrEmpty()) showError("'$searchQuery' için sonuç bulunamadı.")
-                    else showError("Bu kategoride hiç kanal bulunamadı.")
+                    showError(getString(R.string.error_search_no_result, searchQuery))
+                    showError(getString(R.string.error_no_channel_in_category))
                 }
 
             } catch (e: Exception) {
-                showError("Sunucuya bağlanılamadı.")
+                showError(getString(R.string.error_server_connection))
             }
         }
     }
@@ -168,7 +170,8 @@ class ChannelListActivity : BaseActivity(), OnChannelClickListener {
             }
             startActivity(intent)
         } else {
-            showError("Profil verileri eksik.")
+            // Çeviriyi otomatik çeker
+            showError(getString(R.string.error_missing_profile_data))
         }
     }
 

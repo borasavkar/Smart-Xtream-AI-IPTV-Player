@@ -42,13 +42,20 @@ class ChannelAdapter(
 
         fun bind(channelWithEpg: ChannelWithEpg, listener: OnChannelClickListener) {
             val channel = channelWithEpg.channel
+            val context = itemView.context // Context'i al
 
-            // 1. İsim
-            channelNameText.text = channel.name?.trim() ?: "İsimsiz"
+            // 1. İsim (Çevrilebilir yapıldı)
+            channelNameText.text = channel.name?.trim() ?: context.getString(R.string.channel_untitled)
 
-            // 2. RESİM OPTİMİZASYONU (Performans İçin Güncellendi)
-            val type = channelWithEpg.epgNow?.title ?: "TV"
-            val isMovieOrSeries = (type == "Film" || type == "Dizi")
+            // 2. RESİM OPTİMİZASYONU (Mantık Hatası Düzeltildi)
+            val type = channelWithEpg.epgNow?.title
+
+            // Kodun, telefonun o anki dilindeki karşılıkları alması lazım
+            val labelMovie = context.getString(R.string.type_movie)   // Örn: "Movie" veya "Film"
+            val labelSeries = context.getString(R.string.type_series) // Örn: "Series" veya "Dizi"
+
+            // Gelen veri, o anki dilin kelimesine eşit mi?
+            val isMovieOrSeries = (type == labelMovie || type == labelSeries)
 
             if (isMovieOrSeries) {
                 channelIcon.scaleType = ImageView.ScaleType.CENTER_CROP

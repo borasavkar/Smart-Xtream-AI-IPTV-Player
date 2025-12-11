@@ -1,6 +1,6 @@
 [versions]
 # Android Gradle Plugin (AGP) - En son stabil
-agp = "8.13.1"
+agp = "8.13.2"
 
 # Kotlin ve KSP - Uyumlu Sürümler
 kotlin = "2.2.21"

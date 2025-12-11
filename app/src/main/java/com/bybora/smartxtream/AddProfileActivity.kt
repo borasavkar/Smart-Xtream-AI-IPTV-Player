@@ -87,7 +87,8 @@ class AddProfileActivity : BaseActivity() {
         var profileName = editTextProfileName.text.toString().trim()
 
         if (profileName.isEmpty()) {
-            profileName = "Profil"
+            // Otomatik olarak dile göre "Profile", "Profil" veya "Профиль" yazar.
+            profileName = getString(R.string.default_profile_name)
         } else {
             profileName = profileName.substring(0, 1).uppercase() + profileName.substring(1)
         }

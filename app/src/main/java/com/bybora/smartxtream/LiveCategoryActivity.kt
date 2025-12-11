@@ -139,11 +139,13 @@ class LiveCategoryActivity : BaseActivity(), OnCategoryClickListener, OnChannelC
                     }
                 } else {
                     progressBar.visibility = View.GONE
-                    Toast.makeText(this@LiveCategoryActivity, "Kategori bulunamadı", Toast.LENGTH_SHORT).show()
+                    // DÜZELTME: Çevrilebilir Toast
+                    Toast.makeText(this@LiveCategoryActivity, getString(R.string.error_category_not_found), Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 progressBar.visibility = View.GONE
-                Toast.makeText(this@LiveCategoryActivity, "Hata: ${e.message}", Toast.LENGTH_SHORT).show()
+                // DÜZELTME: Çevrilebilir Hata mesajı
+                Toast.makeText(this@LiveCategoryActivity, getString(R.string.error_generic_prefix, e.message), Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -156,8 +158,9 @@ class LiveCategoryActivity : BaseActivity(), OnCategoryClickListener, OnChannelC
 
         val epgList = ContentCache.cachedEpg
         currentChannels = filtered.map { ch ->
+            // DÜZELTME: "Canlı Yayın" yerine getString kullanıldı
             val epgNow = epgList?.find { it.epgId == ch.streamId.toString() }
-                ?: EpgListing("0", "0", "Canlı Yayın", "", "", "")
+                ?: EpgListing("0", "0", getString(R.string.label_live_stream), "", "", "")
             ChannelWithEpg(ch, epgNow)
         }
 
@@ -165,7 +168,8 @@ class LiveCategoryActivity : BaseActivity(), OnCategoryClickListener, OnChannelC
 
         if (currentChannels.isEmpty()) {
             textEmptyState.visibility = View.VISIBLE
-            textEmptyState.text = "Bu kategoride kanal yok."
+            // DÜZELTME: Çevrilebilir boş durum mesajı
+            textEmptyState.text = getString(R.string.msg_no_channels_in_category)
         }
 
         progressBar.visibility = View.GONE
@@ -185,9 +189,8 @@ class LiveCategoryActivity : BaseActivity(), OnCategoryClickListener, OnChannelC
             putExtra("EXTRA_STREAM_TYPE", "live")
             putExtra("EXTRA_STREAM_NAME", channelWithEpg.channel.name)
             putExtra("EXTRA_STREAM_ICON", channelWithEpg.channel.streamIcon)
-            // --- KRİTİK EKLEME BURASI ---
+            // --- KRİTİK EKLEME ---
             // Eğer MockData'dan gelen özel bir link varsa (directSource), bunu Player'a taşı.
-            // Bu satır olmazsa PlayerActivity standart sunucu linkini dener ve açılmaz.
             if (!channelWithEpg.channel.directSource.isNullOrEmpty()) {
                 putExtra("EXTRA_DIRECT_URL", channelWithEpg.channel.directSource)
             }

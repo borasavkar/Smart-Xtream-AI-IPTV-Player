@@ -1,10 +1,8 @@
 <resources>
     <string name="app_name">Smart Xtream AI: IPTV Player</string>
-
     <string name="title_live">Canlı</string>
     <string name="title_movies">Filmler</string>
     <string name="title_series">Diziler</string>
-
     <string name="btn_profile">Profil</string>
     <string name="btn_watch_now">HEMEN İZLE</string>
     <string name="btn_trailer">FRAGMAN</string>
@@ -18,7 +16,6 @@
     <string name="btn_yes">Evet</string>
     <string name="btn_ok">Tamam</string>
     <string name="btn_update">Profili Güncelle</string>
-
     <string name="text_connected">Bağlandı</string>
     <string name="status_connected">Bağlandı</string>
     <string name="status_connecting">Bağlanıyor…</string>
@@ -32,7 +29,6 @@
     <string name="text_no_profile">Profil Yok</string>
     <string name="status_unlimited">Süresiz</string>
     <string name="status_expired">Süresi Dolmuş</string>
-
     <string name="header_recommendations">Sizin İçin Seçtiklerimiz</string>
     <string name="text_recent_channels">Son Eklenen Kanallar</string>
     <string name="header_recent_channels">Son Eklenen Kanallar</string>
@@ -43,17 +39,14 @@
     <string name="text_series_recommendations">Maratonluk Diziler</string>
     <string name="header_series_recommendations">Maratonluk Diziler</string>
     <string name="header_episodes">BÖLÜMLER</string>
-
     <string name="label_plot">ÖZET</string>
     <string name="label_cast">OYUNCULAR</string>
     <string name="label_director">YÖNETMEN</string>
     <string name="label_rating">IMDB:</string>
-
     <string name="hint_search_category">Kategori Ara…</string>
     <string name="hint_search_channel">Kanal Ara…</string>
     <string name="hint_search_movie">Film Ara…</string>
     <string name="hint_search_series">Dizi Ara…</string>
-
     <string name="title_add_profile">Profil Ekle</string>
     <string name="title_favorites">Favorilerim</string>
     <string name="radio_xtream">Xtream Codes</string>
@@ -65,14 +58,12 @@
     <string name="hint_m3u_url">M3U Playlist URL</string>
     <string name="msg_fill_fields">Lütfen alanları doldurun</string>
     <string name="msg_profile_saved">Profil Kaydedildi!</string>
-
     <string name="settings_title">Uygulama Ayarları</string>
     <string name="settings_audio_lang">Ses Dili</string>
     <string name="settings_subtitle_lang">Altyazı Dili</string>
     <string name="settings_saved">Ayarlar kaydedildi</string>
     <string name="settings_default_audio">Varsayılan Ses</string>
     <string name="settings_default_subtitle">Varsayılan Altyazı</string>
-
     <string name="error_title">⚠️ Hata</string>
     <string name="error_server_message">Bu hata uygulamadan değil, yayın kaynağından kaynaklanmaktadır.</string>
     <string name="error_no_internet">İnternet Yok</string>
@@ -82,7 +73,6 @@
     <string name="msg_loading">Yükleniyor…</string>
     <string name="msg_select_profile">Lütfen önce bir profil seçin</string>
     <string name="msg_confirm_delete">Bu profili silmek istediğinize emin misiniz?</string>
-
     <string name="desc_app_logo">Uygulama Logosu</string>
     <string name="sub_settings">Altyazı Ayarları</string>
     <string name="image_sound_settings">Görüntü ve Ses Ayarları</string>
@@ -157,4 +147,73 @@
     <string name="msg_fav_added">Favorilere eklendi</string>
     <string name="msg_fav_removed">Favorilerden çıkarıldı</string>
     <string name="wait">bekle…</string>
-</resources>
+    <string name="msg_premium_active">Premium Aktif! Teşekkürler.</string>
+    <string name="msg_purchase_success">Satın alma başarılı!</string>
+    <string name="msg_connecting">Bağlantı kuruluyor, lütfen bekleyin…</string>
+    <string name="format_monthly_sub">Aylık Abonelik (%1$s)</string>
+    <string name="format_yearly_sub">Yıllık Abonelik (Avantajlı) (%1$s)</string>
+    <string name="format_lifetime_sub">Ömür Boyu Erişim (%1$s)</string>
+    <string name="fmt_btn_monthly">Aylık Abonelik (%1$s)</string>
+    <string name="fmt_btn_yearly">Yıllık Abonelik (Avantajlı) (%1$s)</string>
+    <string name="fmt_btn_lifetime">Ömür Boyu Erişim (%1$s)</string>
+    <string name="status_watched">✔ İZLENDİ</string>
+    <string name="status_paused_at">⏸ %d. dakikada kaldın</string>
+    <string name="default_profile_name">Profil</string>
+    <string name="error_missing_profile_data">Profil verileri eksik.</string>
+    <string name="error_search_no_result">\'%1$s\' için sonuç bulunamadı.</string>
+    <string name="error_no_channel_in_category">Bu kategoride hiç kanal bulunamadı.</string>
+    <string name="error_server_connection">Sunucuya bağlanılamadı.</string>
+    <string name="error_channel_list_fetch">Kanal listesi alınamadı. Hata: %1$s</string>
+    <string name="error_profile_load_failed">Profil bilgileri yüklenemedi.</string>
+    <string name="type_live">Canlı</string>
+    <string name="type_movie">Film</string>
+    <string name="type_series">Dizi</string>
+    <string name="channel_default_name">Kanal %1$d</string>
+    <string name="title_init_error">Başlatma Hatası</string>
+    <string name="error_unknown">Bilinmeyen hata</string>
+    <string name="title_codec_error">Codec Hatası</string>
+    <string name="error_code_msg">Hata kodu: %1$s</string>
+    <string name="title_server_error">Sunucu Hatası (%1$d)</string>
+    <string name="error_file_not_found">Dosya bulunamadı.</string>
+    <string name="error_access_denied">Erişim reddedildi.</string>
+    <string name="error_server_generic">Sunucu hatası.</string>
+    <string name="title_no_internet">İnternet Yok</string>
+    <string name="error_connection_failed">Bağlantı hatası.</string>
+    <string name="title_playback_error">Oynatma Hatası</string>
+    <string name="msg_quality_lowered">Kalite düşürüldü.</string>
+    <string name="title_settings">Ayarlar</string>
+    <string name="option_video_quality">Görüntü Kalitesi</string>
+    <string name="option_audio_lang">Ses Dili</string>
+    <string name="title_resolution">Çözünürlük</string>
+    <string name="title_audio">Ses</string>
+    <string name="title_select_subtitle">Altyazı Seç</string>
+    <string name="option_off">Kapat</string>
+    <string name="option_load_from_file">📂 Dosyadan Yükle…</string>
+    <string name="label_unknown">Bilinmeyen</string>
+    <string name="msg_no_options">Seçenek yok</string>
+    <string name="msg_selected">Seçildi</string>
+    <string name="msg_disabled">Kapatıldı</string>
+    <string name="msg_loaded">Yüklendi</string>
+    <string name="error_profile_error">Profil hatası</string>
+    <string name="category_all_movies">Tüm Filmler</string>
+    <string name="msg_content_not_found_or_loaded">İçerik bulunamadı veya yüklenemedi.</string>
+    <string name="error_vod_list_fetch">Film listesi alınamadı: %1$s</string>
+    <string name="error_connection_msg">Bağlantı hatası: %1$s</string>
+    <string name="format_category_default">Kategori %1$s</string>
+    <string name="error_category_not_found">Kategori bulunamadı</string>
+    <string name="error_generic_prefix">Hata: %1$s</string>
+    <string name="msg_no_channels_in_category">Bu kategoride kanal yok.</string>
+    <string name="label_live_stream">Canlı Yayın</string>
+    <string name="msg_trial_expired">Deneme süreniz bitti.</string>
+    <string name="btn_no">Hayır</string>
+    <string name="menu_refresh">🔄 İçerikleri Yenile</string>
+    <string name="msg_refreshing">Yenileniyor…</string>
+    <string name="date_invalid">Geçersiz Tarih</string>
+    <string name="msg_connecting_retry">Bağlantı kuruluyor, lütfen tekrar deneyin…</string>
+    <string name="channel_untitled">İsimsiz</string>
+    <string name="untitled_movie">İsimsiz Film</string>
+    <string name="untitled_series">İsimsiz Dizi</string>
+    <string name="format_series_info">%1$s %2$s | %3$s</string>
+    <string name="category_all_series">Tüm Diziler</string>
+    <string name="msg_content_not_found">İçerik bulunamadı.</string>
+  </resources>

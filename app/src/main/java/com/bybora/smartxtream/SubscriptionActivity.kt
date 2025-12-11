@@ -6,6 +6,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.android.billingclient.api.ProductDetails
 import com.bybora.smartxtream.utils.BillingManager
 import com.bybora.smartxtream.utils.SettingsManager
 import kotlinx.coroutines.flow.collectLatest
@@ -19,6 +20,9 @@ class SubscriptionActivity : AppCompatActivity() {
     private lateinit var btnLifetime: Button
     private lateinit var txtStatus: TextView
 
+    // Ürünleri hafızada tutmak için liste
+    private var availableProducts: List<ProductDetails> = emptyList()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_subscription)
@@ -31,33 +35,55 @@ class SubscriptionActivity : AppCompatActivity() {
         btnLifetime = findViewById(R.id.btn_sub_lifetime)
         txtStatus = findViewById(R.id.text_sub_status)
 
-        // Fiyatları Google Play'den çek ve butonlara yaz
+        // 1. ADIM: Butonlara tıklama özelliğini HEMEN ver (Veri gelmesini bekleme)
+        setupClickListeners()
+
+        // 2. ADIM: Google Play'den fiyatları çekmeye başla
         loadProducts()
 
-        // Satın alma başarılı olursa ne yapacağını dinle
+        // 3. ADIM: Satın alma başarılı olursa ne yapacağını dinle
         observePurchaseStatus()
+    }
+
+    private fun setupClickListeners() {
+        btnMonthly.setOnClickListener {
+            initiatePurchase(BillingManager.SUB_MONTHLY)
+        }
+        btnYearly.setOnClickListener {
+            initiatePurchase(BillingManager.SUB_YEARLY)
+        }
+        btnLifetime.setOnClickListener {
+            initiatePurchase(BillingManager.LIFETIME)
+        }
     }
 
     private fun loadProducts() {
         billingManager.queryProductDetails { detailsList ->
+            // Listeyi hafızaya kaydet
+            availableProducts = detailsList
+
+            // UI güncellemesini (Fiyat yazdırma) ana iş parçacığında yap
             runOnUiThread {
+                if (detailsList.isEmpty()) {
+                    // Eğer liste boşsa log veya uyarı verebilirsin ama kullanıcıyı rahatsız etme
+                    // Butonlar varsayılan metinleriyle kalır.
+                    return@runOnUiThread
+                }
+
                 detailsList.forEach { product ->
-                    // Fiyatı (örn: 49.99 TL) al ve butona yaz
                     val price = product.subscriptionOfferDetails?.firstOrNull()?.pricingPhases?.pricingPhaseList?.firstOrNull()?.formattedPrice
                         ?: product.oneTimePurchaseOfferDetails?.formattedPrice
+                        ?: "---"
 
                     when (product.productId) {
                         BillingManager.SUB_MONTHLY -> {
-                            btnMonthly.text = "${getString(R.string.monthly_subscription)} ($price)"
-                            btnMonthly.setOnClickListener { billingManager.launchPurchaseFlow(this, product) }
+                            btnMonthly.text = getString(R.string.fmt_btn_monthly, price)
                         }
                         BillingManager.SUB_YEARLY -> {
-                            btnYearly.text = "${getString(R.string.annual_subscription_with_advantage)} ($price)"
-                            btnYearly.setOnClickListener { billingManager.launchPurchaseFlow(this, product) }
+                            btnYearly.text = getString(R.string.fmt_btn_yearly, price)
                         }
                         BillingManager.LIFETIME -> {
-                            btnLifetime.text = "${getString(R.string.lifeTime_subscription)} ($price)"
-                            btnLifetime.setOnClickListener { billingManager.launchPurchaseFlow(this, product) }
+                            btnLifetime.text = getString(R.string.fmt_btn_lifetime, price)
                         }
                     }
                 }
@@ -65,12 +91,33 @@ class SubscriptionActivity : AppCompatActivity() {
         }
     }
 
+    // Yardımcı Fonksiyon: Güvenli Satın Alma Başlatıcı
+    private fun initiatePurchase(productId: String) {
+        val product = availableProducts.find { it.productId == productId }
+
+        if (product != null) {
+            billingManager.launchPurchaseFlow(this, product)
+        } else {
+            // Eğer ürün bilgisi henüz yüklenmediyse kullanıcıyı uyar
+            Toast.makeText(this, getString(R.string.msg_connecting_retry), Toast.LENGTH_SHORT).show()
+            // Tekrar yüklemeyi tetikle
+            loadProducts()
+        }
+    }
+
     private fun observePurchaseStatus() {
         lifecycleScope.launch {
             billingManager.isPremium.collectLatest { isPremium ->
                 if (isPremium) {
-                    txtStatus.text = "Premium Aktif! Teşekkürler."
-                    Toast.makeText(this@SubscriptionActivity, "Satın alma başarılı!", Toast.LENGTH_LONG).show()
+                    runOnUiThread {
+                        txtStatus.text = getString(R.string.msg_premium_active)
+                        Toast.makeText(this@SubscriptionActivity, getString(R.string.msg_purchase_success), Toast.LENGTH_LONG).show()
+
+                        // Butonları gizle veya devre dışı bırak (Opsiyonel)
+                        btnMonthly.isEnabled = false
+                        btnYearly.isEnabled = false
+                        btnLifetime.isEnabled = false
+                    }
 
                     // Premium bilgisini kaydet
                     SettingsManager.setPremiumStatus(this@SubscriptionActivity, true)

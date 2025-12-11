@@ -1,10 +1,8 @@
 <resources>
     <string name="app_name">Smart Xtream AI: IPTV Player</string>
-
     <string name="title_live">Прямой эфир</string>
     <string name="title_movies">Фильмы</string>
     <string name="title_series">Сериалы</string>
-
     <string name="btn_profile">Профиль</string>
     <string name="btn_watch_now">СМОТРЕТЬ СЕЙЧАС</string>
     <string name="btn_trailer">ТРЕЙЛЕР</string>
@@ -18,7 +16,6 @@
     <string name="btn_yes">Да</string>
     <string name="btn_ok">ОК</string>
     <string name="btn_update">Обновить профиль</string>
-
     <string name="text_connected">Подключено</string>
     <string name="status_connected">Подключено</string>
     <string name="status_connecting">Подключение…</string>
@@ -32,7 +29,6 @@
     <string name="text_no_profile">Нет профиля</string>
     <string name="status_unlimited">Безлимит</string>
     <string name="status_expired">Истек</string>
-
     <string name="header_recommendations">Рекомендовано для вас</string>
     <string name="text_recent_channels">Недавно добавленные каналы</string>
     <string name="header_recent_channels">Недавно добавленные каналы</string>
@@ -43,17 +39,14 @@
     <string name="text_series_recommendations">Сериалы для марафона</string>
     <string name="header_series_recommendations">Сериалы для марафона</string>
     <string name="header_episodes">ЭПИЗОДЫ</string>
-
     <string name="label_plot">СЮЖЕТ</string>
     <string name="label_cast">АКТЕРЫ</string>
     <string name="label_director">РЕЖИССЕР</string>
     <string name="label_rating">IMDB:</string>
-
     <string name="hint_search_category">Поиск категории…</string>
     <string name="hint_search_channel">Поиск канала…</string>
     <string name="hint_search_movie">Поиск фильма…</string>
     <string name="hint_search_series">Поиск сериала…</string>
-
     <string name="title_add_profile">Добавить профиль</string>
     <string name="title_favorites">Избранное</string>
     <string name="radio_xtream">Xtream Codes</string>
@@ -65,14 +58,12 @@
     <string name="hint_m3u_url">URL M3U плейлиста</string>
     <string name="msg_fill_fields">Пожалуйста, заполните поля</string>
     <string name="msg_profile_saved">Профиль сохранен!</string>
-
     <string name="settings_title">Настройки приложения</string>
     <string name="settings_audio_lang">Язык аудио</string>
     <string name="settings_subtitle_lang">Язык субтитров</string>
     <string name="settings_saved">Настройки сохранены</string>
     <string name="settings_default_audio">Аудио по умолчанию</string>
     <string name="settings_default_subtitle">Субтитры по умолчанию</string>
-
     <string name="error_title">⚠️ Ошибка</string>
     <string name="error_server_message">Эта ошибка исходит от источника трансляции, а не от приложения.</string>
     <string name="error_no_internet">Нет интернета</string>
@@ -82,7 +73,6 @@
     <string name="msg_loading">Загрузка…</string>
     <string name="msg_select_profile">Пожалуйста, сначала выберите профиль</string>
     <string name="msg_confirm_delete">Вы уверены, что хотите удалить этот профиль?</string>
-
     <string name="desc_app_logo">Логотип приложения</string>
     <string name="sub_settings">Настройки субтитров</string>
     <string name="image_sound_settings">Настройки видео и звука</string>
@@ -156,5 +146,74 @@
     <string name="error_fetch_details">Не удалось загрузить подробности.</string>
     <string name="msg_fav_added">Добавлено в избранное</string>
     <string name="msg_fav_removed">Удалено из избранного</string>
-    <string name="wait">Подождите…</string>
+    <string name="wait">подождите…</string>
+    <string name="msg_premium_active">Премиум активен! Спасибо.</string>
+    <string name="msg_purchase_success">Покупка прошла успешно!</string>
+    <string name="msg_connecting">Подключение, пожалуйста, подождите…</string>
+    <string name="format_monthly_sub">Ежемесячная подписка (%1$s)</string>
+    <string name="format_yearly_sub">Годовая подписка (Выгодно) (%1$s)</string>
+    <string name="format_lifetime_sub">Пожизненный доступ (%1$s)</string>
+    <string name="fmt_btn_monthly">Ежемесячная подписка (%1$s)</string>
+    <string name="fmt_btn_yearly">Годовая подписка (Выгодно) (%1$s)</string>
+    <string name="fmt_btn_lifetime">Пожизненный доступ (%1$s)</string>
+    <string name="status_watched">✔ ПРОСМОТРЕНО</string>
+    <string name="status_paused_at">⏸ Остановились на %d мин</string>
+    <string name="default_profile_name">Профиль</string>
+    <string name="error_missing_profile_data">Данные профиля отсутствуют.</string>
+    <string name="error_search_no_result">Результатов по запросу «%1$s» не найдено.</string>
+    <string name="error_no_channel_in_category">В этой категории нет каналов.</string>
+    <string name="error_server_connection">Не удалось подключиться к серверу.</string>
+    <string name="error_channel_list_fetch">Не удалось получить список каналов. Ошибка: %1$s</string>
+    <string name="error_profile_load_failed">Не удалось загрузить данные профиля.</string>
+    <string name="type_live">Эфир</string>
+    <string name="type_movie">Фильм</string>
+    <string name="type_series">Сериал</string>
+    <string name="channel_default_name">Канал %1$d</string>
+    <string name="title_init_error">Ошибка инициализации</string>
+    <string name="error_unknown">Неизвестная ошибка</string>
+    <string name="title_codec_error">Ошибка кодека</string>
+    <string name="error_code_msg">Код ошибки: %1$s</string>
+    <string name="title_server_error">Ошибка сервера (%1$d)</string>
+    <string name="error_file_not_found">Файл не найден.</string>
+    <string name="error_access_denied">Доступ запрещен.</string>
+    <string name="error_server_generic">Ошибка сервера.</string>
+    <string name="title_no_internet">Нет интернета</string>
+    <string name="error_connection_failed">Ошибка подключения.</string>
+    <string name="title_playback_error">Ошибка воспроизведения</string>
+    <string name="msg_quality_lowered">Качество снижено.</string>
+    <string name="title_settings">Настройки</string>
+    <string name="option_video_quality">Качество видео</string>
+    <string name="option_audio_lang">Язык аудио</string>
+    <string name="title_resolution">Разрешение</string>
+    <string name="title_audio">Аудио</string>
+    <string name="title_select_subtitle">Выбрать субтитры</string>
+    <string name="option_off">Выкл</string>
+    <string name="option_load_from_file">📂 Загрузить файл…</string>
+    <string name="label_unknown">Неизвестно</string>
+    <string name="msg_no_options">Нет опций</string>
+    <string name="msg_selected">Выбрано</string>
+    <string name="msg_disabled">Отключено</string>
+    <string name="msg_loaded">Загружено</string>
+    <string name="error_profile_error">Ошибка профиля</string>
+    <string name="category_all_movies">Все фильмы</string>
+    <string name="msg_content_not_found_or_loaded">Контент не найден или не удалось загрузить.</string>
+    <string name="error_vod_list_fetch">Не удалось получить список фильмов: %1$s</string>
+    <string name="error_connection_msg">Ошибка подключения: %1$s</string>
+    <string name="format_category_default">Категория %1$s</string>
+    <string name="error_category_not_found">Категория не найдена</string>
+    <string name="error_generic_prefix">Ошибка: %1$s</string>
+    <string name="msg_no_channels_in_category">В этой категории нет каналов.</string>
+    <string name="label_live_stream">Прямой эфир</string>
+    <string name="msg_trial_expired">Пробный период истек.</string>
+    <string name="btn_no">Нет</string>
+    <string name="menu_refresh">🔄 Обновить контент</string>
+    <string name="msg_refreshing">Обновление…</string>
+    <string name="date_invalid">Неверная дата</string>
+    <string name="msg_connecting_retry">Подключение, попробуйте еще раз…</string>
+    <string name="channel_untitled">Без названия</string>
+    <string name="untitled_movie">Фильм без названия</string>
+    <string name="untitled_series">Сериал без названия</string>
+    <string name="format_series_info">%1$s %2$s | %3$s</string>
+    <string name="category_all_series">Все сериалы</string>
+    <string name="msg_content_not_found">Контент не найден.</string>
 </resources>
