@@ -185,6 +185,12 @@ class LiveCategoryActivity : BaseActivity(), OnCategoryClickListener, OnChannelC
             putExtra("EXTRA_STREAM_TYPE", "live")
             putExtra("EXTRA_STREAM_NAME", channelWithEpg.channel.name)
             putExtra("EXTRA_STREAM_ICON", channelWithEpg.channel.streamIcon)
+            // --- KRİTİK EKLEME BURASI ---
+            // Eğer MockData'dan gelen özel bir link varsa (directSource), bunu Player'a taşı.
+            // Bu satır olmazsa PlayerActivity standart sunucu linkini dener ve açılmaz.
+            if (!channelWithEpg.channel.directSource.isNullOrEmpty()) {
+                putExtra("EXTRA_DIRECT_URL", channelWithEpg.channel.directSource)
+            }
         }
         startActivity(intent)
     }

@@ -19,7 +19,8 @@ object RetrofitClient {
         .connectTimeout(120, TimeUnit.SECONDS) // Bağlantı kurma süresi
         .readTimeout(120, TimeUnit.SECONDS)    // Veri okuma süresi (Büyük listeler için kritik)
         .writeTimeout(120, TimeUnit.SECONDS)   // Veri yazma süresi
-        .retryOnConnectionFailure(true)        // Koparsa tekrar dene
+        .retryOnConnectionFailure(true)
+        .addInterceptor(MockInterceptor())// Koparsa tekrar dene
         .build()
 
     // Servis Oluşturucu
