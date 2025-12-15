@@ -5,6 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <application
         android:allowBackup="true"
@@ -18,6 +19,15 @@
         android:usesCleartextTraffic="true"
         android:largeHeap="true"
         android:banner="@drawable/tv_banner">
+        <activity
+            android:name=".IntroActivity"
+            android:exported="true"
+            android:screenOrientation="fullSensor">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".MainActivity"

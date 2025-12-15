@@ -15,6 +15,7 @@ import com.bybora.smartxtream.utils.SettingsManager
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
+import android.content.Intent
 
 class AddProfileActivity : BaseActivity() {
 
@@ -139,8 +140,20 @@ class AddProfileActivity : BaseActivity() {
                 SettingsManager.saveSelectedProfileId(this@AddProfileActivity, newId.toInt())
                 showToast(R.string.msg_profile_saved)
             }
-            setResult(RESULT_OK)
+
+            // --- DEĞİŞİKLİK BAŞLANGICI ---
+
+            // ESKİSİ:
+            // setResult(RESULT_OK)
+            // finish()
+
+            // YENİSİ (Intro'yu ve geçmişi silip Ana Sayfayı temiz açar):
+            val intent = Intent(this@AddProfileActivity, MainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
             finish()
+
+            // --- DEĞİŞİKLİK BİTİŞİ ---
         }
     }
 

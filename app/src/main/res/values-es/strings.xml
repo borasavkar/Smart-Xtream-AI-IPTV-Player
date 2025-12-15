@@ -217,4 +217,26 @@
     <string name="format_series_info">%1$s %2$s | %3$s</string>
     <string name="category_all_series">Todas las Series</string>
     <string name="msg_content_not_found">Contenido no encontrado.</string>
+    <string name="next">SIGUIENTE</string>
+    <string name="intro_title_1">Bienvenido a Smart Xtream AI</string>
+    <string name="intro_desc_1">Conoce el reproductor IPTV más rápido impulsado por IA. Soporte 4K, experiencia sin cortes.</string>
+
+    <string name="intro_title_2">⚠️ Aviso Importante</string>
+    <string name="intro_desc_2">Esta aplicación NO contiene CANALES, PELÍCULAS ni SERIES. Solo somos un reproductor. Debes ingresar los datos de tu proveedor de IPTV.</string>
+
+    <string name="intro_title_3">¿Cómo iniciar sesión?</string>
+    <string name="intro_desc_3">Comienza a ver ingresando el \'Usuario\', \'Contraseña\' y \'URL del Servidor\' proporcionados por tu servicio IPTV.</string>
+
+    <string name="btn_next">SIGUIENTE</string>
+    <string name="btn_start">EMPEZAR</string>
+
+    <string name="intro_main_title">El Futuro de la Experiencia TV</string>
+    <string name="intro_sub_title">Descubre Smart Xtream con IA. No es solo un reproductor, es tecnología.</string>
+
+    <string name="feat_ai_stability">Estabilidad impulsada por IA</string>
+    <string name="feat_4k_speed">Streaming 4K Ultra Rápido</string>
+    <string name="feat_no_buffer">Deportes en vivo sin lag</string>
+    <string name="feat_number_one">El Reproductor #1 del Mercado</string>
+
+    <string name="btn_start_premium">EMPEZAR Y DESCUBRIR</string>
 </resources>

@@ -217,4 +217,26 @@
     <string name="format_series_info">%1$s %2$s | %3$s</string>
     <string name="category_all_series">كل المسلسلات</string>
     <string name="msg_content_not_found">لم يتم العثور على محتوى.</string>
+    <string name="next">التالي</string>
+    <string name="intro_title_1">مرحباً بكم في Smart Xtream AI</string>
+    <string name="intro_desc_1">تعرف على أسرع مشغل IPTV مدعوم بالذكاء الاصطناعي. دعم دقة 4K وتجربة مشاهدة بدون تقطيع.</string>
+
+    <string name="intro_title_2">⚠️ تنبيه هام</string>
+    <string name="intro_desc_2">هذا التطبيق لا يحتوي على أي قنوات أو أفلام أو مسلسلات. نحن مجرد مشغل. للمشاهدة، يجب عليك إدخال بيانات مزود خدمة IPTV الخاص بك.</string>
+
+    <string name="intro_title_3">كيفية تسجيل الدخول؟</string>
+    <string name="intro_desc_3">ابدأ المشاهدة فوراً بإدخال \'اسم المستخدم\' و\'كلمة المرور\' و\'رابط الخادم (URL)\' التي حصلت عليها من مزود خدمة IPTV الخاص بك.</string>
+
+    <string name="btn_next">التالي</string>
+    <string name="btn_start">ابدأ الآن</string>
+
+    <string name="intro_main_title">مستقبل تجربة التلفزيون</string>
+    <string name="intro_sub_title">اكتشف Smart Xtream المدعوم بالذكاء الاصطناعي. ليس مجرد مشغل، بل تكنولوجيا متطورة.</string>
+
+    <string name="feat_ai_stability">استقرار مدعوم بالذكاء الاصطناعي</string>
+    <string name="feat_4k_speed">بث 4K فائق السرعة</string>
+    <string name="feat_no_buffer">مباريات مباشرة بدون تقطيع</string>
+    <string name="feat_number_one">المشغل رقم #1 في السوق</string>
+
+    <string name="btn_start_premium">ابدأ واكتشف الآن</string>
 </resources>

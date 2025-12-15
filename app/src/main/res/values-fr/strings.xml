@@ -216,4 +216,27 @@
     <string name="format_series_info">%1$s %2$s | %3$s</string>
     <string name="category_all_series">Toutes les séries</string>
     <string name="msg_content_not_found">Contenu introuvable.</string>
+
+    <string name="next">SUIVANT</string>
+    <string name="intro_title_1">Bienvenue sur Smart Xtream AI</string>
+    <string name="intro_desc_1">Découvrez le lecteur IPTV le plus rapide propulsé par l\'IA. Support 4K, expérience sans coupure.</string>
+
+    <string name="intro_title_2">⚠️ Avis Important</string>
+    <string name="intro_desc_2">Cette application ne contient AUCUNE CHAÎNE, FILM ou SÉRIE. Nous sommes juste un lecteur. Vous devez entrer les détails de votre fournisseur IPTV.</string>
+
+    <string name="intro_title_3">Comment se connecter ?</string>
+    <string name="intro_desc_3">Commencez à regarder immédiatement en entrant le \'Nom d\'utilisateur\', le \'Mot de passe\' et \'URL du serveur\' fournis par votre service IPTV.</string>
+
+    <string name="btn_next">SUIVANT</string>
+    <string name="btn_start">COMMENCER</string>
+
+    <string name="intro_main_title">L\'avenir de l\'expérience TV</string>
+    <string name="intro_sub_title">Découvrez Smart Xtream avec IA. Pas juste un lecteur, c\'est une technologie.</string>
+
+    <string name="feat_ai_stability">Stabilité assistée par IA</string>
+    <string name="feat_4k_speed">Streaming 4K Ultra Rapide</string>
+    <string name="feat_no_buffer">Sports en direct sans lag</string>
+    <string name="feat_number_one">Le Lecteur #1 du Marché</string>
+
+    <string name="btn_start_premium">DÉMARRER ET DÉCOUVRIR</string>
 </resources>

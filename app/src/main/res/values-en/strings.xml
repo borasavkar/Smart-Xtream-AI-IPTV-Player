@@ -216,4 +216,27 @@
     <string name="format_series_info">%1$s %2$s | %3$s</string>
     <string name="category_all_series">All Series</string>
     <string name="msg_content_not_found">Content not found.</string>
+
+    <string name="next">NEXT</string>
+    <string name="intro_title_1">Welcome to Smart Xtream AI</string>
+    <string name="intro_desc_1">Meet the fastest AI-powered IPTV player. 4K supported, buffer-free experience.</string>
+
+    <string name="intro_title_2">⚠️ Important Notice</string>
+    <string name="intro_desc_2">This app contains NO CHANNELS, MOVIES, or SERIES. We are just a player. You must enter your own IPTV provider details to watch.</string>
+
+    <string name="intro_title_3">How to Login?</string>
+    <string name="intro_desc_3">Start watching immediately by entering the \'Username\', \'Password\', and \'Server URL\' provided by your IPTV service.</string>
+
+    <string name="btn_next">NEXT</string>
+    <string name="btn_start">START NOW</string>
+
+    <string name="intro_main_title">The Future of TV Experience</string>
+    <string name="intro_sub_title">Meet the AI-powered Smart Xtream. Not just a player, it\'s a technology.</string>
+
+    <string name="feat_ai_stability">AI-Powered Stability</string>
+    <string name="feat_4k_speed">Ultra Fast 4K Streaming</string>
+    <string name="feat_no_buffer">Buffer-Free Live Sports</string>
+    <string name="feat_number_one">The #1 Player in the Market</string>
+
+    <string name="btn_start_premium">START &amp; DISCOVER NOW</string>
 </resources>

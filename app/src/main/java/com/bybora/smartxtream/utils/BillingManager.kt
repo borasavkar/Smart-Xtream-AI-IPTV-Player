@@ -18,16 +18,20 @@ class BillingManager(private val context: Context) {
         const val LIFETIME = "lifetime_premium"
     }
 
-    // DÜZELTME 1: Listener'ı 'billingClient'tan önce tanımladık
-    private val purchasesUpdatedListener = PurchasesUpdatedListener { billingResult, purchases ->
-        if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
-            for (purchase in purchases) {
-                handlePurchase(purchase)
+    // --- GARANTİ ÇÖZÜM ---
+    // Lambda yerine 'object' kullanıyoruz.
+    // List yerine 'MutableList' kullanıyoruz (Billing 7+ uyumu için).
+    private val purchasesUpdatedListener = object : PurchasesUpdatedListener {
+        override fun onPurchasesUpdated(billingResult: BillingResult, purchases: MutableList<Purchase>?) {
+            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
+                for (purchase in purchases) {
+                    handlePurchase(purchase)
+                }
+            } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
+                // İptal
+            } else {
+                // Hata
             }
-        } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
-            // Kullanıcı iptal etti
-        } else {
-            // Hata
         }
     }
 
@@ -50,30 +54,36 @@ class BillingManager(private val context: Context) {
     }
 
     fun queryPurchases() {
+        // SUBS (Abonelik)
         billingClient.queryPurchasesAsync(
-            QueryPurchasesParams.newBuilder().setProductType(ProductType.SUBS).build()
-        ) { result, purchases ->
-            if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                processPurchases(purchases)
+            QueryPurchasesParams.newBuilder().setProductType(ProductType.SUBS).build(),
+            object : PurchasesResponseListener {
+                override fun onQueryPurchasesResponse(billingResult: BillingResult, purchases: MutableList<Purchase>) {
+                    if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                        processPurchases(purchases)
+                    }
+                }
             }
-        }
+        )
 
+        // INAPP (Tek Seferlik)
         billingClient.queryPurchasesAsync(
-            QueryPurchasesParams.newBuilder().setProductType(ProductType.INAPP).build()
-        ) { result, purchases ->
-            if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                processPurchases(purchases)
+            QueryPurchasesParams.newBuilder().setProductType(ProductType.INAPP).build(),
+            object : PurchasesResponseListener {
+                override fun onQueryPurchasesResponse(billingResult: BillingResult, purchases: MutableList<Purchase>) {
+                    if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                        processPurchases(purchases)
+                    }
+                }
             }
-        }
+        )
     }
 
-    // DÜZELTME 2: Eksik olan handlePurchase fonksiyonu eklendi
     private fun handlePurchase(purchase: Purchase) {
         if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
             if (!purchase.isAcknowledged) {
                 acknowledgePurchase(purchase)
             } else {
-                // Zaten onaylanmışsa premium yap
                 _isPremium.value = true
                 SettingsManager.setPremiumStatus(context, true)
             }
@@ -100,12 +110,15 @@ class BillingManager(private val context: Context) {
         val params = AcknowledgePurchaseParams.newBuilder()
             .setPurchaseToken(purchase.purchaseToken)
             .build()
-        billingClient.acknowledgePurchase(params) { result ->
-            if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                _isPremium.value = true
-                SettingsManager.setPremiumStatus(context, true)
+
+        billingClient.acknowledgePurchase(params, object : AcknowledgePurchaseResponseListener {
+            override fun onAcknowledgePurchaseResponse(billingResult: BillingResult) {
+                if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                    _isPremium.value = true
+                    SettingsManager.setPremiumStatus(context, true)
+                }
             }
-        }
+        })
     }
 
     fun queryProductDetails(onDetailsLoaded: (List<ProductDetails>) -> Unit) {
@@ -117,11 +130,18 @@ class BillingManager(private val context: Context) {
 
         val params = QueryProductDetailsParams.newBuilder().setProductList(productList).build()
 
-        billingClient.queryProductDetailsAsync(params) { result, detailsList ->
-            if (result.responseCode == BillingClient.BillingResponseCode.OK) {
-                onDetailsLoaded(detailsList)
+        billingClient.queryProductDetailsAsync(
+            params,
+            object : ProductDetailsResponseListener {
+                override fun onProductDetailsResponse(billingResult: BillingResult, productDetailsList: MutableList<ProductDetails>) {
+                    if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                        onDetailsLoaded(productDetailsList)
+                    } else {
+                        onDetailsLoaded(emptyList())
+                    }
+                }
             }
-        }
+        )
     }
 
     fun launchPurchaseFlow(activity: Activity, productDetails: ProductDetails) {

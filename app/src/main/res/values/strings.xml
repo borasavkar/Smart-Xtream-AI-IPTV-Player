@@ -216,4 +216,21 @@
     <string name="format_series_info">%1$s %2$s | %3$s</string>
     <string name="category_all_series">Tüm Diziler</string>
     <string name="msg_content_not_found">İçerik bulunamadı.</string>
-  </resources>
+
+    <string name="next">İLERİ</string>
+    <string name="intro_title_1">Smart Xtream AI\'ya Hoşgeldiniz</string>
+    <string name="intro_desc_1">Yapay zeka destekli, Türkiye\'nin en hızlı IPTV oynatıcısı ile tanışın. 4K destekli, donmayan deneyim.</string>
+    <string name="intro_title_2">⚠️ Önemli Bilgilendirme</string>
+    <string name="intro_desc_2">Bu uygulama içerisinde HİÇBİR KANAL, FİLM veya DİZİ bulunmamaktadır. Biz sadece oynatıcıyız. İzlemek için kendi IPTV sağlayıcınızın bilgilerini girmelisiniz.</string>
+    <string name="intro_title_3">Nasıl Giriş Yapılır?</string>
+    <string name="intro_desc_3">Satın aldığınız IPTV hizmetinden size verilen \'Kullanıcı Adı\', \'Şifre\' ve \'Sunucu URL\' bilgilerini girerek ekleyerek hemen izlemeye başlayın.</string>
+    <string name="btn_next">İLERİ</string>
+    <string name="btn_start">HEMEN BAŞLA</string>
+    <string name="intro_main_title">Geleceğin TV Deneyimi</string>
+    <string name="intro_sub_title">Yapay zeka destekli Smart Xtream ile tanışın. Sadece bir oynatıcı değil, bir teknoloji.</string>
+    <string name="feat_ai_stability">Yapay Zeka Destekli Stabilite</string>
+    <string name="feat_4k_speed">Ultra Hızlı 4K Akış</string>
+    <string name="feat_no_buffer">Donmayan Canlı Maç Keyfi</string>
+    <string name="feat_number_one">Türkiye\'nin #1 Numaralı Oynatıcısı</string>
+    <string name="btn_start_premium">HEMEN BAŞLA ve KEŞFET</string>
+</resources>
