@@ -11,6 +11,8 @@ import com.bybora.smartxtream.utils.BillingManager
 import com.bybora.smartxtream.utils.SettingsManager
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import com.bybora.smartxtream.utils.TrialManager
+import androidx.activity.OnBackPressedCallback
 
 class SubscriptionActivity : AppCompatActivity() {
 
@@ -22,10 +24,37 @@ class SubscriptionActivity : AppCompatActivity() {
 
     // Ürünleri hafızada tutmak için liste
     private var availableProducts: List<ProductDetails> = emptyList()
+    // SubscriptionActivity.kt içindeki onBackPressed Düzeltmesi
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_subscription)
+// --- GERİ TUŞU YÖNETİMİ (YENİ SİSTEM - ASYNC) ---
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // Önce Premium mu diye bak (Hızlı)
+                if (SettingsManager.isPremiumUser(this@SubscriptionActivity)) {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    return
+                }
+
+                // Değilse Sunucuya Sor (Bekletmemek için hızlıca kontrol ediyoruz)
+                TrialManager.checkTrialOnServer(this@SubscriptionActivity, object : TrialManager.TrialCheckListener {
+                    override fun onCheckResult(isActive: Boolean, message: String) {
+                        if (!isActive) {
+                            // Deneme bitmiş, çıkış yap
+                            finishAffinity()
+                        } else {
+                            // Deneme devam ediyor, geri gitmeye izin ver
+                            isEnabled = false
+                            onBackPressedDispatcher.onBackPressed()
+                        }
+                    }
+                })
+            }
+        })
+        // ----------------------------------------
 
         billingManager = BillingManager(this)
         billingManager.startConnection()

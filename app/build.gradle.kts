@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
-    // id("kotlin-kapt") // SİLDİK: KSP kullanıyoruz
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -13,8 +13,8 @@ android {
         applicationId = "com.bybora.smartxtream"
         minSdk = 24
         targetSdk = 36
-        versionCode = 12
-        versionName = "1.1.1"
+        versionCode = 22
+        versionName = "1.1.22"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,6 +30,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // --- BURAYI EKLE ---
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
+            // ------------------
         }
     }
     compileOptions {
@@ -90,5 +95,9 @@ dependencies {
     implementation(libs.billing)
     // 8. Animation
     implementation(libs.lottie)
+    // Firebase (En üste plugin bloğuna da ekleme yapman gerekebilir, aşağıya bak)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.analytics)
 
 }

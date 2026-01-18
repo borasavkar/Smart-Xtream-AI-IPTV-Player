@@ -205,7 +205,6 @@
     <string name="error_generic_prefix">Error: %1$s</string>
     <string name="msg_no_channels_in_category">Sin canales en esta categoría.</string>
     <string name="label_live_stream">Transmisión en Vivo</string>
-    <string name="msg_trial_expired">Su periodo de prueba ha terminado.</string>
     <string name="btn_no">No</string>
     <string name="menu_refresh">🔄 Actualizar Contenido</string>
     <string name="msg_refreshing">Actualizando…</string>
@@ -220,23 +219,23 @@
     <string name="next">SIGUIENTE</string>
     <string name="intro_title_1">Bienvenido a Smart Xtream AI</string>
     <string name="intro_desc_1">Conoce el reproductor IPTV más rápido impulsado por IA. Soporte 4K, experiencia sin cortes.</string>
-
     <string name="intro_title_2">⚠️ Aviso Importante</string>
     <string name="intro_desc_2">Esta aplicación NO contiene CANALES, PELÍCULAS ni SERIES. Solo somos un reproductor. Debes ingresar los datos de tu proveedor de IPTV.</string>
-
     <string name="intro_title_3">¿Cómo iniciar sesión?</string>
     <string name="intro_desc_3">Comienza a ver ingresando el \'Usuario\', \'Contraseña\' y \'URL del Servidor\' proporcionados por tu servicio IPTV.</string>
-
     <string name="btn_next">SIGUIENTE</string>
     <string name="btn_start">EMPEZAR</string>
-
     <string name="intro_main_title">El Futuro de la Experiencia TV</string>
     <string name="intro_sub_title">Descubre Smart Xtream con IA. No es solo un reproductor, es tecnología.</string>
-
     <string name="feat_ai_stability">Estabilidad impulsada por IA</string>
     <string name="feat_4k_speed">Streaming 4K Ultra Rápido</string>
     <string name="feat_no_buffer">Deportes en vivo sin lag</string>
     <string name="feat_number_one">El Reproductor #1 del Mercado</string>
-
     <string name="btn_start_premium">EMPEZAR Y DESCUBRIR</string>
+    <string name="msg_trial_active">Prueba activa: Quedan %1$d días</string>
+    <string name="msg_trial_expired">Su periodo de prueba ha terminado.</string>
+    <string name="msg_trial_started">Prueba iniciada (7 días)</string>
+    <string name="msg_conn_error_temp">Error de conexión: Acceso temporal</string>
+    <string name="msg_server_error_offline">No se puede conectar al servidor (Modo sin conexión)</string>
+    <string name="trial_status_msg">Prueba: quedan %d días</string>
 </resources>

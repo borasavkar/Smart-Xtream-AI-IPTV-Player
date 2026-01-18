@@ -1,46 +1,66 @@
 package com.bybora.smartxtream.utils
 
+import android.annotation.SuppressLint
 import android.content.Context
-import android.content.SharedPreferences
-import androidx.core.content.edit
+import android.provider.Settings
+import com.bybora.smartxtream.R // R dosyasını import etmeyi unutma
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 
 object TrialManager {
-    private const val PREFS_NAME = "TrialPrefs"
-    private const val KEY_FIRST_RUN_TIME = "first_run_time"
 
-    // 14 Gün (Milisaniye cinsinden hesaplama)
-    // 14 gün * 24 saat * 60 dakika * 60 saniye * 1000 milisaniye
-    private const val TRIAL_DURATION_MS = 14L * 24 * 60 * 60 * 1000
+    // 7 Gün (Milisaniye)
+    private const val TRIAL_DURATION_MS = 7L * 24 * 60 * 60 * 1000
 
 
-    private fun getPrefs(context: Context): SharedPreferences {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    interface TrialCheckListener {
+        fun onCheckResult(isActive: Boolean, message: String)
     }
 
-    fun checkTrialStatus(context: Context): Boolean {
-        val prefs = getPrefs(context)
-        var firstRunTime = prefs.getLong(KEY_FIRST_RUN_TIME, 0L)
+    @SuppressLint("HardwareIds")
+    fun checkTrialOnServer(context: Context, listener: TrialCheckListener) {
+        val db = FirebaseFirestore.getInstance()
 
-        // Uygulama ilk kez açılıyorsa şu anki zamanı kaydet
-        if (firstRunTime == 0L) {
-            firstRunTime = System.currentTimeMillis()
-            prefs.edit { putLong(KEY_FIRST_RUN_TIME, firstRunTime) }
+        // Bu "unknown_device" sadece veritabanı ID'sidir, kullanıcı görmez.
+        val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "unknown_device"
+
+        val docRef = db.collection("trials").document(deviceId)
+
+        docRef.get().addOnSuccessListener { document ->
+            if (document.exists()) {
+                // --- CİHAZ KAYITLI ---
+                val firstRunTime = document.getLong("firstRunTime") ?: 0L
+                val currentTime = System.currentTimeMillis()
+                val elapsedTime = currentTime - firstRunTime
+
+                if (elapsedTime < TRIAL_DURATION_MS) {
+                    // Deneme Devam Ediyor
+                    val remainingDays = (TRIAL_DURATION_MS - elapsedTime) / (24 * 60 * 60 * 1000)
+                    // ÇOK DİLLİ MESAJ:
+                    val msg = context.getString(R.string.msg_trial_active, remainingDays)
+                    listener.onCheckResult(true, msg)
+                } else {
+                    // Süre Bitmiş
+                    listener.onCheckResult(false, context.getString(R.string.msg_trial_expired))
+                }
+
+            } else {
+                // --- İLK KEZ ---
+                val data = hashMapOf(
+                    "firstRunTime" to System.currentTimeMillis(),
+                    "deviceModel" to android.os.Build.MODEL
+                )
+
+                docRef.set(data, SetOptions.merge())
+                    .addOnSuccessListener {
+                        listener.onCheckResult(true, context.getString(R.string.msg_trial_started))
+                    }
+                    .addOnFailureListener {
+                        listener.onCheckResult(true, context.getString(R.string.msg_conn_error_temp))
+                    }
+            }
+        }.addOnFailureListener {
+            listener.onCheckResult(true, context.getString(R.string.msg_server_error_offline))
         }
-
-        val currentTime = System.currentTimeMillis()
-        val elapsedTime = currentTime - firstRunTime
-
-        // Geçen süre 14 günden AZ ise TRUE döndür (Deneme Devam Ediyor)
-        return elapsedTime < TRIAL_DURATION_MS
-    }
-
-    fun getRemainingDays(context: Context): Long {
-        val prefs = getPrefs(context)
-        val firstRunTime = prefs.getLong(KEY_FIRST_RUN_TIME, System.currentTimeMillis())
-        val elapsedTime = System.currentTimeMillis() - firstRunTime
-        val remaining = TRIAL_DURATION_MS - elapsedTime
-
-        // Kalan milisaniyeyi güne çevir
-        return if (remaining > 0) remaining / (24 * 60 * 60 * 1000) else 0
     }
 }

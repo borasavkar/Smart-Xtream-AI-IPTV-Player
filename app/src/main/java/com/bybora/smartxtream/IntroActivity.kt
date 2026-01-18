@@ -12,9 +12,10 @@ class IntroActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Eğer intro daha önce görüldüyse direkt geç ve Intro'yu kapat
+        // HATA BURADAYDI: Intro görüldüyse direkt 'AddProfileActivity'ye gidiyordu.
+        // DÜZELTME: Artık 'MainActivity'ye gidecek. Kararı MainActivity verecek.
         if (isIntroSeen()) {
-            startActivity(Intent(this, AddProfileActivity::class.java))
+            startActivity(Intent(this, MainActivity::class.java)) // <-- DEĞİŞTİ
             finish()
             return
         }
@@ -25,8 +26,9 @@ class IntroActivity : AppCompatActivity() {
 
         btnStart.setOnClickListener {
             saveIntroSeen()
-            // Butona basınca geç ama Intro'yu kapatma (Geri dönüşe izin ver)
-            startActivity(Intent(this, AddProfileActivity::class.java))
+            // BURASI DA DEĞİŞTİ: Butona basınca da MainActivity'ye gitmeli.
+            startActivity(Intent(this, MainActivity::class.java)) // <-- DEĞİŞTİ
+            finish() // Intro activity'yi kapatalım ki geri tuşuna basınca dönmesin
         }
     }
 

@@ -204,7 +204,6 @@
     <string name="error_generic_prefix">Ошибка: %1$s</string>
     <string name="msg_no_channels_in_category">В этой категории нет каналов.</string>
     <string name="label_live_stream">Прямой эфир</string>
-    <string name="msg_trial_expired">Пробный период истек.</string>
     <string name="btn_no">Нет</string>
     <string name="menu_refresh">🔄 Обновить контент</string>
     <string name="msg_refreshing">Обновление…</string>
@@ -219,23 +218,23 @@
     <string name="next">ДАЛЕЕ</string>
     <string name="intro_title_1">Добро пожаловать в Smart Xtream AI</string>
     <string name="intro_desc_1">Встречайте самый быстрый IPTV-плеер с искусственным интеллектом. Поддержка 4K, работа без зависаний.</string>
-
     <string name="intro_title_2">⚠️ Важное уведомление</string>
     <string name="intro_desc_2">В этом приложении НЕТ КАНАЛОВ, ФИЛЬМОВ или СЕРИАЛОВ. Мы только плеер. Вы должны ввести данные своего IPTV-провайдера.</string>
-
     <string name="intro_title_3">Как войти?</string>
     <string name="intro_desc_3">Начните просмотр, введя \'Имя пользователя\', \'Пароль\' и \'URL сервера\', предоставленные вашим сервисом IPTV.</string>
-
     <string name="btn_next">ДАЛЕЕ</string>
     <string name="btn_start">НАЧАТЬ</string>
-
     <string name="intro_main_title">Будущее ТВ</string>
     <string name="intro_sub_title">Познакомьтесь со Smart Xtream AI. Не просто плеер, а технология.</string>
-
     <string name="feat_ai_stability">Стабильность с ИИ</string>
     <string name="feat_4k_speed">Ультрабыстрый 4K стриминг</string>
     <string name="feat_no_buffer">Спорт без буферизации</string>
     <string name="feat_number_one">Плеер #1 на рынке</string>
-
     <string name="btn_start_premium">НАЧАТЬ И УЗНАТЬ БОЛЬШЕ</string>
+    <string name="msg_trial_active">Пробный период: осталось %1$d дн.</string>
+    <string name="msg_trial_expired">Пробный период истек.</string>
+    <string name="msg_trial_started">Пробный период начался (7 дней)</string>
+    <string name="msg_conn_error_temp">Ошибка подключения: Временный доступ</string>
+    <string name="msg_server_error_offline">Не удается подключиться к серверу (Офлайн-режим)</string>
+    <string name="trial_status_msg">Пробно: осталось %d дн.</string>
 </resources>

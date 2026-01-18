@@ -204,7 +204,6 @@
     <string name="error_generic_prefix">Erreur : %1$s</string>
     <string name="msg_no_channels_in_category">Aucune chaîne dans cette catégorie.</string>
     <string name="label_live_stream">Diffusion en direct</string>
-    <string name="msg_trial_expired">Période d\'essai expirée.</string>
     <string name="btn_no">Non</string>
     <string name="menu_refresh">🔄 Actualiser le contenu</string>
     <string name="msg_refreshing">Actualisation…</string>
@@ -216,27 +215,26 @@
     <string name="format_series_info">%1$s %2$s | %3$s</string>
     <string name="category_all_series">Toutes les séries</string>
     <string name="msg_content_not_found">Contenu introuvable.</string>
-
     <string name="next">SUIVANT</string>
     <string name="intro_title_1">Bienvenue sur Smart Xtream AI</string>
     <string name="intro_desc_1">Découvrez le lecteur IPTV le plus rapide propulsé par l\'IA. Support 4K, expérience sans coupure.</string>
-
     <string name="intro_title_2">⚠️ Avis Important</string>
     <string name="intro_desc_2">Cette application ne contient AUCUNE CHAÎNE, FILM ou SÉRIE. Nous sommes juste un lecteur. Vous devez entrer les détails de votre fournisseur IPTV.</string>
-
     <string name="intro_title_3">Comment se connecter ?</string>
     <string name="intro_desc_3">Commencez à regarder immédiatement en entrant le \'Nom d\'utilisateur\', le \'Mot de passe\' et \'URL du serveur\' fournis par votre service IPTV.</string>
-
     <string name="btn_next">SUIVANT</string>
     <string name="btn_start">COMMENCER</string>
-
     <string name="intro_main_title">L\'avenir de l\'expérience TV</string>
     <string name="intro_sub_title">Découvrez Smart Xtream avec IA. Pas juste un lecteur, c\'est une technologie.</string>
-
     <string name="feat_ai_stability">Stabilité assistée par IA</string>
     <string name="feat_4k_speed">Streaming 4K Ultra Rapide</string>
     <string name="feat_no_buffer">Sports en direct sans lag</string>
     <string name="feat_number_one">Le Lecteur #1 du Marché</string>
-
     <string name="btn_start_premium">DÉMARRER ET DÉCOUVRIR</string>
+    <string name="msg_trial_active">Essai actif : %1$d jours restants</string>
+    <string name="msg_trial_expired">Période d\'essai expirée.</string>
+    <string name="msg_trial_started">Essai commencé (7 jours)</string>
+    <string name="msg_conn_error_temp">Erreur de connexion : Accès temporaire</string>
+    <string name="msg_server_error_offline">Impossible de se connecter au serveur (Mode hors ligne)</string>
+    <string name="trial_status_msg">Essai : %d jours restants</string>
 </resources>

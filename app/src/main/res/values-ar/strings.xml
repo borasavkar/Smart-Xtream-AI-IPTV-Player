@@ -205,7 +205,6 @@
     <string name="error_generic_prefix">خطأ: %1$s</string>
     <string name="msg_no_channels_in_category">لا توجد قنوات في هذه الفئة.</string>
     <string name="label_live_stream">بث مباشر</string>
-    <string name="msg_trial_expired">انتهت الفترة التجريبية.</string>
     <string name="btn_no">لا</string>
     <string name="menu_refresh">🔄 تحديث المحتوى</string>
     <string name="msg_refreshing">جارِ التحديث…</string>
@@ -220,23 +219,23 @@
     <string name="next">التالي</string>
     <string name="intro_title_1">مرحباً بكم في Smart Xtream AI</string>
     <string name="intro_desc_1">تعرف على أسرع مشغل IPTV مدعوم بالذكاء الاصطناعي. دعم دقة 4K وتجربة مشاهدة بدون تقطيع.</string>
-
     <string name="intro_title_2">⚠️ تنبيه هام</string>
     <string name="intro_desc_2">هذا التطبيق لا يحتوي على أي قنوات أو أفلام أو مسلسلات. نحن مجرد مشغل. للمشاهدة، يجب عليك إدخال بيانات مزود خدمة IPTV الخاص بك.</string>
-
     <string name="intro_title_3">كيفية تسجيل الدخول؟</string>
     <string name="intro_desc_3">ابدأ المشاهدة فوراً بإدخال \'اسم المستخدم\' و\'كلمة المرور\' و\'رابط الخادم (URL)\' التي حصلت عليها من مزود خدمة IPTV الخاص بك.</string>
-
     <string name="btn_next">التالي</string>
     <string name="btn_start">ابدأ الآن</string>
-
     <string name="intro_main_title">مستقبل تجربة التلفزيون</string>
     <string name="intro_sub_title">اكتشف Smart Xtream المدعوم بالذكاء الاصطناعي. ليس مجرد مشغل، بل تكنولوجيا متطورة.</string>
-
     <string name="feat_ai_stability">استقرار مدعوم بالذكاء الاصطناعي</string>
     <string name="feat_4k_speed">بث 4K فائق السرعة</string>
     <string name="feat_no_buffer">مباريات مباشرة بدون تقطيع</string>
     <string name="feat_number_one">المشغل رقم #1 في السوق</string>
-
     <string name="btn_start_premium">ابدأ واكتشف الآن</string>
+    <string name="msg_trial_active">الفترة التجريبية نشطة: بقي %1$d يوم</string>
+    <string name="msg_trial_expired">انتهت الفترة التجريبية.</string>
+    <string name="msg_trial_started">بدأت الفترة التجريبية (7 أيام)</string>
+    <string name="msg_conn_error_temp">خطأ في الاتصال: وصول مؤقت</string>
+    <string name="msg_server_error_offline">تعذر الاتصال بالخادم (وضع غير متصل)</string>
+    <string name="trial_status_msg">تجربة: باقي %d أيام</string>
 </resources>

@@ -30,6 +30,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/monthly_subscription"
+        android:textColor="@android:color/white"
         android:backgroundTint="@color/purple_500"
         android:layout_marginBottom="12dp"/>
 
@@ -38,6 +39,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/annual_subscription_with_advantage"
+        android:textColor="@android:color/white"
         android:backgroundTint="@color/purple_700"
         android:layout_marginBottom="12dp"/>
 
@@ -46,6 +48,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/lifeTime_subscription"
+        android:textColor="@android:color/white"
         android:backgroundTint="@color/teal_700"
         android:layout_marginBottom="24dp"/>
 

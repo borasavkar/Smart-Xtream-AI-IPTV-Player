@@ -22,10 +22,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.bybora.smartxtream" />
+                  <option name="mobileSdkAppId" value="1:345296362498:android:7f36bb98eb7ad54a965b1b" />
+                  <option name="projectId" value="smartxtreamlicense" />
+                  <option name="projectNumber" value="345296362498" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

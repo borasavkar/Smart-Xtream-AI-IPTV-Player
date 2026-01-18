@@ -9,7 +9,7 @@ ksp = "2.2.21-2.0.4"
 # AndroidX Core
 coreKtx = "1.17.0"
 appcompat = "1.7.1"
-activity = "1.12.1"
+activity = "1.12.2"
 constraintlayout = "2.2.1"
 material = "1.13.0"
 
@@ -19,7 +19,7 @@ junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 
 # Media3 (ExoPlayer)
-media3 = "1.8.0"
+media3 = "1.9.0"
 
 # Network
 retrofit = "2.11.0"
@@ -33,8 +33,10 @@ lifecycle = "2.10.0"
 # --- EKSİK OLANLAR EKLENDİ ---
 glide = "4.16.0" # Stabil Glide sürümü
 billing = "7.1.1" # En güncel ödeme sistemi
-
 lottie = "6.7.1"
+# Google Services ve Firebase Sürümleri
+googleServices = "4.4.4"
+firebaseBom = "34.7.0"
 
 [libraries]
 # AndroidX
@@ -66,7 +68,6 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 
-# --- EKSİK OLANLAR EKLENDİ ---
 # Glide
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 # KSP için Glide Compiler (adını 'compiler' yaptık ki kodunuzdaki libs.glide.compiler ile eşleşsin)
@@ -74,15 +75,22 @@ glide-compiler = { group = "com.github.bumptech.glide", name = "ksp", version.re
 
 # Google Play Billing
 billing = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billing" }
+# Firebase (BOM ile Yönetim)
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
+
+# Animasyon
+lottie = { group = "com.airbnb.android", name = "lottie", version.ref = "lottie" }
 
 # Test
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 
-lottie = { group = "com.airbnb.android", name = "lottie", version.ref = "lottie" }
-
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+# Google Services Plugin (İşte eksik olan buydu!)
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

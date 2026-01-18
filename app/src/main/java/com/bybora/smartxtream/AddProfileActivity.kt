@@ -1,5 +1,6 @@
 package com.bybora.smartxtream
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -15,7 +16,6 @@ import com.bybora.smartxtream.utils.SettingsManager
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.launch
-import android.content.Intent
 
 class AddProfileActivity : BaseActivity() {
 
@@ -41,6 +41,7 @@ class AddProfileActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_profile)
 
+        // UI Tanımlamaları
         textTitle = findViewById(R.id.title)
         layoutProfileName = findViewById(R.id.layout_profile_name)
         editTextProfileName = findViewById(R.id.edit_text_profile_name)
@@ -88,7 +89,6 @@ class AddProfileActivity : BaseActivity() {
         var profileName = editTextProfileName.text.toString().trim()
 
         if (profileName.isEmpty()) {
-            // Otomatik olarak dile göre "Profile", "Profil" veya "Профиль" yazar.
             profileName = getString(R.string.default_profile_name)
         } else {
             profileName = profileName.substring(0, 1).uppercase() + profileName.substring(1)
@@ -97,18 +97,18 @@ class AddProfileActivity : BaseActivity() {
         val username = editTextUsername.text.toString().trim()
         val password = editTextPassword.text.toString().trim()
 
-        // SADECE XTREAM: Tüm alanlar zorunlu
         if (!validateInputs(profileName, username, serverUrl)) return
 
         showLoading(true)
 
         lifecycleScope.launch {
             try {
-                // API Doğrulaması
+                // API Doğrulaması (Giriş Yapılıyor...)
                 val apiService = RetrofitClient.createService(serverUrl)
                 val response = apiService.authenticate(username, password)
 
                 if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
+                    // Giriş Başarılı -> Veritabanına Kaydet
                     saveProfileToDb(serverUrl, profileName, username, password)
                 } else {
                     showError(getString(R.string.error_login_failed_check))
@@ -128,7 +128,7 @@ class AddProfileActivity : BaseActivity() {
                 serverUrl = url,
                 username = user,
                 password = pass,
-                isM3u = false // Daima False (Xtream)
+                isM3u = false
             )
 
             if (isEditMode) {
@@ -141,19 +141,11 @@ class AddProfileActivity : BaseActivity() {
                 showToast(R.string.msg_profile_saved)
             }
 
-            // --- DEĞİŞİKLİK BAŞLANGICI ---
-
-            // ESKİSİ:
-            // setResult(RESULT_OK)
-            // finish()
-
-            // YENİSİ (Intro'yu ve geçmişi silip Ana Sayfayı temiz açar):
+            // Kayıt bitti, şimdi Ana Sayfayı temiz bir şekilde başlat
             val intent = Intent(this@AddProfileActivity, MainActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
             finish()
-
-            // --- DEĞİŞİKLİK BİTİŞİ ---
         }
     }
 
@@ -185,12 +177,10 @@ class AddProfileActivity : BaseActivity() {
             layoutProfileName.error = getString(R.string.error_profile_name_empty)
             return false
         }
-        // Kullanıcı adı zorunlu
         if (user.isEmpty()) {
             layoutUsername.error = getString(R.string.error_username_empty)
             return false
         }
-        // URL zorunlu
         if (url.isEmpty() || !url.startsWith("http")) {
             layoutServerUrl.error = getString(R.string.error_invalid_url)
             return false

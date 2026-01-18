@@ -72,7 +72,7 @@ class PlayerActivity : BaseActivity() {
     private var password: String? = null
     private var streamId: Int = -1
     private var streamType: String? = "live"
-    private var fileExtension: String? = "mp4"
+    private var fileExtension: String = "mp4"
     private var categoryId: String? = "0"
     private var directUrl: String? = null
     private var nextEpisodeId: Int = -1
@@ -92,6 +92,8 @@ class PlayerActivity : BaseActivity() {
     private var smoothedSpeed: Double = 0.0
 
     private val handler = Handler(Looper.getMainLooper())
+    // ... Diğer değişkenlerin altına ekle
+    private var isFallbackTried = false
     private val progressRunnable = object : Runnable {
         override fun run() {
             checkProgress()
@@ -178,7 +180,7 @@ class PlayerActivity : BaseActivity() {
         password = intent.getStringExtra("EXTRA_PASSWORD")
         streamId = intent.getIntExtra("EXTRA_STREAM_ID", -1)
         streamType = intent.getStringExtra("EXTRA_STREAM_TYPE") ?: "live"
-        fileExtension = intent.getStringExtra("EXTRA_EXTENSION") ?: "mp4"
+        fileExtension = intent.getStringExtra("EXTRA_EXTENSION") ?: if (streamType == "live") "ts" else "mp4"
         categoryId = intent.getStringExtra("EXTRA_CATEGORY_ID") ?: "0"
         directUrl = intent.getStringExtra("EXTRA_DIRECT_URL")
         streamName = intent.getStringExtra("EXTRA_STREAM_NAME") ?: getString(R.string.channel_default_name, streamId)
@@ -225,12 +227,12 @@ class PlayerActivity : BaseActivity() {
                     val safePassword = if (!password.isNullOrEmpty()) java.net.URLEncoder.encode(password, "UTF-8") else ""
 
                     if (safeUsername.isEmpty() || safePassword.isEmpty()) {
-                        "$cleanUrl/live/$streamId.m3u8"
+                        "$cleanUrl/live/$streamId.$fileExtension"
                     } else {
                         when (streamType) {
-                            "vod" -> "$cleanUrl/movie/$safeUsername/$safePassword/$streamId.$fileExtension"
+                            "vod", "movie" -> "$cleanUrl/movie/$safeUsername/$safePassword/$streamId.$fileExtension"
                             "series" -> "$cleanUrl/series/$safeUsername/$safePassword/$streamId.$fileExtension"
-                            else -> "$cleanUrl/live/$safeUsername/$safePassword/$streamId.m3u8"
+                            else -> "$cleanUrl/live/$safeUsername/$safePassword/$streamId.$fileExtension"
                         }
                     }
                 }
@@ -240,7 +242,8 @@ class PlayerActivity : BaseActivity() {
 
                 val baseClient: OkHttpClient = RetrofitClient.okHttpClient
                 val okHttpClient = baseClient.newBuilder().connectTimeout(30, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).followRedirects(true).followSslRedirects(true).build()
-                val okHttpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient).setUserAgent("BoraIPTV/1.0")
+                val userAgent = "IPTVSmartersPro"
+                val okHttpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient).setUserAgent(userAgent)
                 val dataSourceFactory: DataSource.Factory = if (streamType != "live") setupCache(this, okHttpDataSourceFactory) else okHttpDataSourceFactory
 
                 // RENDER MODE: ON (Donanım + Yazılım Hibrit)
@@ -251,6 +254,12 @@ class PlayerActivity : BaseActivity() {
                 // Standart Buffer
                 val loadControl = DefaultLoadControl.Builder()
                     .setPrioritizeTimeOverSizeThresholds(true)
+                    .setBufferDurationsMs(
+                        3000,  // Min Buffer: 3 saniye (Düşük tutuldu ki hemen hazırlansın)
+                        30000, // Max Buffer: 30 saniye
+                        1000,  // Oynatmaya Başlama: Sadece 1 saniye dolunca başla (HIZ İÇİN KRİTİK)
+                        2000   // Yeniden Tamponlama: Donarsa 2 saniye dolunca devam et
+                    )
                     .build()
 
                 val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory).setLiveTargetOffsetMs(10_000)
@@ -412,7 +421,33 @@ class PlayerActivity : BaseActivity() {
     }
 
     private fun handlePlayerError(error: PlaybackException) {
-        val title: String; var msg: String; val cause = error.cause
+        val cause = error.cause
+        // --- AKILLI KURTARMA MEKANİZMASI ---
+        // Eğer hata sunucu kaynaklıysa (404 Bulunamadı, 403 Yasaklı, 405 İzin Yok)
+        // Ve yayın CANLI ise, ve daha önce diğer yolu denemediysek:
+        if (streamType == "live" && !isFallbackTried && cause is HttpDataSource.InvalidResponseCodeException) {
+
+            val code = cause.responseCode
+            // Genelde 400 ile 500 arasındaki hatalar uzantı sorunudur
+            if (code in 400..499) {
+                isFallbackTried = true // Denedim diye işaretle (Sonsuz döngü olmasın)
+
+                // Uzantıyı değiştir: ts ise m3u8 yap, m3u8 ise ts yap
+                fileExtension = if (fileExtension == "ts") "m3u8" else "ts"
+
+                // Player'ı serbest bırak ve yeni uzantıyla tekrar başlat
+                player?.release()
+                player = null
+                initializePlayer() // Tekrar başlat
+
+                // Kullanıcıya çaktırmadan alttan ufak bilgi ver (İstersen bunu sil)
+                // Toast.makeText(this, "Alternatif yayın deneniyor...", Toast.LENGTH_SHORT).show()
+                return // Fonksiyondan çık, hata mesajı gösterme
+            }
+        }
+        // -----------------------------------
+
+        val title: String; var msg: String;
         when {
             error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED || error.errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED -> {
                 title = getString(R.string.title_codec_error)

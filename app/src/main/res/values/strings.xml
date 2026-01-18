@@ -204,7 +204,6 @@
     <string name="error_generic_prefix">Hata: %1$s</string>
     <string name="msg_no_channels_in_category">Bu kategoride kanal yok.</string>
     <string name="label_live_stream">Canlı Yayın</string>
-    <string name="msg_trial_expired">Deneme süreniz bitti.</string>
     <string name="btn_no">Hayır</string>
     <string name="menu_refresh">🔄 İçerikleri Yenile</string>
     <string name="msg_refreshing">Yenileniyor…</string>
@@ -216,7 +215,6 @@
     <string name="format_series_info">%1$s %2$s | %3$s</string>
     <string name="category_all_series">Tüm Diziler</string>
     <string name="msg_content_not_found">İçerik bulunamadı.</string>
-
     <string name="next">İLERİ</string>
     <string name="intro_title_1">Smart Xtream AI\'ya Hoşgeldiniz</string>
     <string name="intro_desc_1">Yapay zeka destekli, Türkiye\'nin en hızlı IPTV oynatıcısı ile tanışın. 4K destekli, donmayan deneyim.</string>
@@ -233,4 +231,10 @@
     <string name="feat_no_buffer">Donmayan Canlı Maç Keyfi</string>
     <string name="feat_number_one">Türkiye\'nin #1 Numaralı Oynatıcısı</string>
     <string name="btn_start_premium">HEMEN BAŞLA ve KEŞFET</string>
+    <string name="msg_trial_active">Deneme Sürüyor: %1$d Gün Kaldı</string>
+    <string name="msg_trial_expired">Deneme süreniz bitti.</string>
+    <string name="msg_trial_started">Deneme Başlatıldı (7 Gün)</string>
+    <string name="msg_conn_error_temp">Bağlantı Hatası: Geçici Erişim</string>
+    <string name="msg_server_error_offline">Sunucuya Bağlanılamadı (Çevrimdışı Mod)</string>
+    <string name="trial_status_msg">Deneme: %d Gün Kaldı</string>
 </resources>

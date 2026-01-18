@@ -36,6 +36,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.Calendar
+import android.util.Log
 
 class MainActivity : BaseActivity(), OnChannelClickListener {
 
@@ -53,6 +54,10 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private lateinit var textConnectionStatus: TextView
     private lateinit var textExpirationDate: TextView
     private lateinit var progressBar: ProgressBar
+    // --- YENİ EKLENENLER ---
+    private lateinit var textTrialCounter: TextView
+    private lateinit var billingManager: com.bybora.smartxtream.utils.BillingManager
+    // -----------------------
 
     // Kartlar
     private lateinit var cardTv: View
@@ -78,23 +83,82 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private var activeProfile: Profile? = null
     private var allProfiles: List<Profile> = emptyList()
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val isPremium = SettingsManager.isPremiumUser(this)
-        if (!isPremium) {
-            val isTrialActive = TrialManager.checkTrialStatus(this)
-            if (!isTrialActive) {
-                // DÜZELTME: Çevrilebilir "Süre bitti" mesajı
-                Toast.makeText(this, getString(R.string.msg_trial_expired), Toast.LENGTH_LONG).show()
-                startActivity(Intent(this, SubscriptionActivity::class.java))
-                finish()
-                return
-            }
-        }
-
+        // 1. Önce Arayüzü Yükle (ki Loading gösterebilelim)
         setContentView(R.layout.activity_main)
         initViews()
+
+        // 2. Yükleniyor işaretini aç
+        progressBar.visibility = View.VISIBLE
+        // --- YENİ EKLENEN: Deneme Sayacı Başlat ---
+        setupTrialCounter()
+
+        // 3. Lisans ve Deneme Kontrolünü Başlat
+        checkLicenseAndStart()
+    }
+    // --- BU FONKSİYONU SINIFIN İÇİNE KOPYALA ---
+    private fun setupTrialCounter() {
+        // BillingManager'ı başlat
+        billingManager = com.bybora.smartxtream.utils.BillingManager(this)
+        billingManager.startConnection()
+
+        lifecycleScope.launch {
+            // Google Play'den Premium durumunu dinle
+            billingManager.isPremium.collect { isPremium ->
+                if (isPremium) {
+                    // Kullanıcı SATIN ALMIŞSA (Aylık/Yıllık/Ömür Boyu) -> GİZLE
+                    textTrialCounter.visibility = View.GONE
+                } else {
+                    // Kullanıcı PREMİUM DEĞİLSE -> TrialManager'a sor
+                    TrialManager.checkTrialOnServer(this@MainActivity, object : TrialManager.TrialCheckListener {
+                        override fun onCheckResult(isActive: Boolean, message: String) {
+                            if (isActive) {
+                                // Deneme devam ediyorsa göster (Örn: "Deneme: 5 Gün Kaldı")
+                                textTrialCounter.text = message
+                                textTrialCounter.visibility = View.VISIBLE
+                            } else {
+                                // Süre bittiyse gizle (Zaten giriş yapamayacak)
+                                textTrialCounter.visibility = View.GONE
+                            }
+                        }
+                    })
+                }
+            }
+        }
+    }
+    // -------------------------------------------
+
+    private fun checkLicenseAndStart() {
+        // A. Premium Kontrolü (Hızlı, Yerel)
+        val isPremium = SettingsManager.isPremiumUser(this)
+
+        if (isPremium) {
+            // Premium kullanıcı ise bekletmeden başlat
+            initAppContent()
+        } else {
+            // B. Deneme Kontrolü (Sunucu Tabanlı, Asenkron)
+            TrialManager.checkTrialOnServer(this, object : TrialManager.TrialCheckListener {
+                override fun onCheckResult(isActive: Boolean, message: String) {
+                    if (isActive) {
+                        // Deneme süresi devam ediyor, başlat
+                        initAppContent()
+                    } else {
+                        // Süre Bitmiş -> Abonelik Ekranına Yönlendir
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show() // Mesaj TrialManager'dan (dil destekli) gelir
+                        startActivity(Intent(this@MainActivity, SubscriptionActivity::class.java))
+                        finish()
+                    }
+                }
+            })
+        }
+    }
+
+    // Lisans onayı alındıktan sonra çalışacak asıl kodlar
+    private fun initAppContent() {
         setupRecyclers()
         setupDashboardCards()
         setupClickListeners()
@@ -111,7 +175,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     activeProfile = null
                     ContentCache.clear()
                     clearBottomBar()
-                    // DÜZELTME: Çevrilebilir "Profil Yok" mesajı
                     textStatusProfileName.setText(R.string.text_no_profile)
                     startActivity(Intent(this@MainActivity, AddProfileActivity::class.java))
                 } else {
@@ -134,30 +197,37 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
 
         lifecycleScope.launch {
             try {
+                // URL DÜZELTME (Çok Önemli): Retrofit sonu '/' ile bitmeyen URL'leri sevmez.
+                var cleanUrl = profile.serverUrl.trim()
+                if (!cleanUrl.endsWith("/")) {
+                    cleanUrl += "/"
+                }
                 val apiService = RetrofitClient.createService(profile.serverUrl)
                 val response = apiService.authenticate(profile.username, profile.password)
                 if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
                     val expiry = response.body()?.userInfo?.expiryDate
-                    // DÜZELTME: Sınırsız metni çevrildi
                     textExpirationDate.text = if (expiry != null) formatTimestamp(expiry) else getString(R.string.status_unlimited)
-                    // DÜZELTME: Bağlı metni çevrildi
                     textConnectionStatus.setText(R.string.status_connected)
                     textConnectionStatus.setTextColor(getColor(R.color.green_success))
                 } else {
-                    // DÜZELTME: Hata mesajı çevrildi
                     textConnectionStatus.setText(R.string.status_login_error)
                     textConnectionStatus.setTextColor(getColor(android.R.color.holo_red_dark))
                 }
             } catch (e: Exception) {
-                // DÜZELTME: Hata mesajı çevrildi
                 textConnectionStatus.setText(R.string.status_server_error)
+                // HATA DETAYINI GÖRMEK İÇİN:
+                val errorMsg = e.message ?: "Bilinmeyen Hata"
+                Log.e("MainActivity", "Connection Error: $errorMsg")
+
+                // Kullanıcıya hatanın sebebini gösterelim (Geçici olarak)
+                textConnectionStatus.text = "Hata: $errorMsg"
+                textConnectionStatus.setTextColor(getColor(android.R.color.holo_red_dark))
             }
         }
     }
 
     private fun deleteProfile(profile: Profile) {
         AlertDialog.Builder(this)
-            // DÜZELTME: Butonlar ve mesajlar çevrildi
             .setTitle(getString(R.string.btn_delete))
             .setMessage(getString(R.string.msg_confirm_delete))
             .setPositiveButton(getString(R.string.btn_yes)) { _, _ ->
@@ -181,6 +251,9 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         textConnectionStatus = findViewById(R.id.text_connection_status)
         textExpirationDate = findViewById(R.id.text_expiration_date)
         progressBar = findViewById(R.id.home_loader)
+        // --- YENİ EKLENEN ---
+        textTrialCounter = findViewById(R.id.text_trial_counter)
+        // --------------------
 
         cardTv = findViewById(R.id.card_tv)
         cardFilms = findViewById(R.id.card_films)
@@ -215,7 +288,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     }
 
     private fun setupDashboardCards() {
-        // DÜZELTME: Kart başlıkları çevrildi
         cardTv.findViewById<TextView>(R.id.card_title).setText(R.string.title_live)
         cardFilms.findViewById<TextView>(R.id.card_title).setText(R.string.title_movies)
         cardSeries.findViewById<TextView>(R.id.card_title).setText(R.string.title_series)
@@ -258,7 +330,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         val audioName = langCodes.indexOf(audioCode).let { if(it == -1) "Türkçe" else langOptions[it] }
         val subName = langCodes.indexOf(subCode).let { if(it == -1) "Türkçe" else langOptions[it] }
 
-        // DÜZELTME: Menü öğeleri çevrildi
         val menuItems = arrayOf(
             "${getString(R.string.settings_default_audio)}: $audioName",
             "${getString(R.string.settings_default_subtitle)}: $subName",
@@ -283,7 +354,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
             .setTitle(title)
             .setItems(items) { _, which ->
                 onSelected(which)
-                // DÜZELTME: Çevrilebilir "Kaydedildi" mesajı
                 Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
                 showGlobalSettingsDialog()
             }
@@ -297,7 +367,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     val safeFavList = favList.filter { isSafeContent(it.name) }
                     safeFavList.map { fav ->
                         val stream = LiveStream(fav.streamId, fav.name, fav.image, fav.categoryId)
-                        // DÜZELTME: Tür etiketleri çevrildi
                         val typeLabel = when(fav.streamType) {
                             "vod" -> getString(R.string.type_movie)
                             "series" -> getString(R.string.type_series)
@@ -320,12 +389,14 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         }
     }
 
+// MainActivity.kt içindeki loadAllContent fonksiyonunu bununla değiştir:
+
     private fun loadAllContent(profile: Profile) {
         progressBar.visibility = View.VISIBLE
 
         lifecycleScope.launch {
             try {
-                // 1. VERİ İNDİRME
+                // 1. VERİ İNDİRME (Aynı kalıyor)
                 val (channels, movies, series, epgList) = withContext(Dispatchers.IO) {
                     var ch: List<LiveStream> = emptyList()
                     var mv: List<VodStream> = emptyList()
@@ -339,29 +410,23 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                         ep = ContentCache.cachedEpg
                     } else {
                         val apiService = RetrofitClient.createService(profile.serverUrl)
-
                         try { val r = apiService.getLiveStreams(profile.username, profile.password); if (r.isSuccessful) ch = r.body() ?: emptyList() } catch (e: Exception) {}
                         try { val r = apiService.getVodStreams(profile.username, profile.password); if (r.isSuccessful) mv = r.body() ?: emptyList() } catch (e: Exception) {}
                         try { val r = apiService.getSeries(profile.username, profile.password); if (r.isSuccessful) sr = r.body() ?: emptyList() } catch (e: Exception) {}
                         try { val r = apiService.getEpgTable(profile.username, profile.password); if (r.isSuccessful) ep = r.body()?.listings } catch (e: Exception) {}
-
                         ContentCache.update(profile.id, ch, mv, sr, ep)
                     }
                     Quadruple(ch, mv, sr, ep)
                 }
 
-                // 2. İŞLEME (Default Thread)
+                // 2. İŞLEME VE AI ALGORİTMASI (Burası Geliştirildi)
                 val (todayMatches, latestItems, recommendedItems) = withContext(Dispatchers.Default) {
                     val safeChannels = channels.filter { isSafeContent(it.name) }
                     val safeMovies = movies.filter { isSafeContent(it.name) }
                     val safeSeries = series.filter { isSafeContent(it.name) }
 
-                    // MAÇLAR
+                    // A. MAÇLAR (Aynı)
                     val matches = if (!epgList.isNullOrEmpty()) {
-                        val now = System.currentTimeMillis()
-                        val calendar = Calendar.getInstance()
-                        calendar.set(Calendar.HOUR_OF_DAY, 23); calendar.set(Calendar.MINUTE, 59)
-                        val endOfDay = calendar.timeInMillis
                         safeChannels.mapNotNull { ch ->
                             val ep = epgList.find { it.epgId == ch.streamId.toString() }
                             if (ep != null) {
@@ -371,32 +436,50 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                         }.take(20)
                     } else emptyList()
 
-                    // SON EKLENENLER
+                    // B. SON EKLENENLER (Aynı)
                     val newMovies = safeMovies.sortedByDescending { it.streamId }.take(10)
                     val newSeries = safeSeries.sortedByDescending { it.seriesId }.take(5)
                     val latest = mutableListOf<ChannelWithEpg>()
-                    // DÜZELTME: Türler çevrildi
                     newMovies.forEach { m -> latest.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
                     newSeries.forEach { s -> latest.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", getString(R.string.type_series), "", "", ""))) }
 
-                    // ÖNERİLER (Sizin İçin Seçtiklerimiz)
+                    // C. AI TABANLI ÖNERİLER (YENİ ALGORİTMA)
                     val recs = mutableListOf<ChannelWithEpg>()
-                    val myFavorites = favoriteDao.getAllFavorites().first()
 
-                    if (myFavorites.isNotEmpty()) {
-                        val favCatIds = myFavorites.map { it.categoryId }.toSet()
-                        val recMovies = safeMovies.filter { it.categoryId in favCatIds }.shuffled().take(10)
-                        val recSeries = safeSeries.filter { it.categoryId in favCatIds }.shuffled().take(5)
+                    // Adım 1: Veritabanından Kullanıcının "Favori Türünü" öğren
+                    // NOT: UI thread dışında (Default dispatcher) olduğumuz için direkt DAO çağırabiliriz
+                    val topMovieCatList = db.interactionDao().getTopCategoryForType("vod")
+                    val topSeriesCatList = db.interactionDao().getTopCategoryForType("series")
 
-                        recMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
-                        recSeries.forEach { s -> recs.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", getString(R.string.type_series), "", "", ""))) }
+                    val topMovieCatId = if (topMovieCatList.isNotEmpty()) topMovieCatList[0].categoryId else null
+                    val topSeriesCatId = if (topSeriesCatList.isNotEmpty()) topSeriesCatList[0].categoryId else null
+
+                    // Adım 2: Buna göre içerik seç
+                    val smartMovies = if (topMovieCatId != null) {
+                        // Kullanıcı en çok bu kategoriyi izlemiş, buradan seç
+                        safeMovies.filter { it.categoryId == topMovieCatId }.shuffled().take(10)
+                    } else {
+                        // Veri yoksa rastgele al
+                        safeMovies.shuffled().take(5)
                     }
 
-                    if (recs.isEmpty()) {
+                    val smartSeries = if (topSeriesCatId != null) {
+                        safeSeries.filter { it.categoryId == topSeriesCatId }.shuffled().take(5)
+                    } else {
+                        safeSeries.shuffled().take(3)
+                    }
+
+                    // Adım 3: Listeyi oluştur
+                    smartMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
+                    smartSeries.forEach { s -> recs.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", getString(R.string.type_series), "", "", ""))) }
+
+                    // Eğer AI yeterince veri bulamadıysa listeyi popülerlerle tamamla
+                    if (recs.size < 5) {
                         val trendingMovies = safeMovies.take(10)
                         trendingMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
                     }
 
+                    // EPG ile birleştir (Görsel düzenleme için)
                     val finalRecs = if (recs.isNotEmpty()) {
                         val combined = combineChannelsAndEpg(recs.map { it.channel }, epgList)
                         combined.mapIndexed { index, item ->
@@ -407,6 +490,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     Triple(matches, latest, finalRecs)
                 }
 
+                // UI GÜNCELLEME (Aynı)
                 if (todayMatches.isNotEmpty()) {
                     matchAdapter.submitList(todayMatches)
                     titleMatches.visibility = View.VISIBLE; recyclerMatches.visibility = View.VISIBLE
@@ -422,7 +506,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                 }
 
                 if (recommendedItems.isNotEmpty()) {
-                    // DÜZELTME: Başlık çevrildi
+                    // Başlığı dinamik yapabiliriz: "Sizin İçin Seçtiklerimiz"
                     titleRecommendations.setText(R.string.header_recommendations)
                     recAdapter.submitList(recommendedItems)
                     titleRecommendations.visibility = View.VISIBLE; recyclerRecommendations.visibility = View.VISIBLE
@@ -434,7 +518,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
 
             } catch (e: Exception) {
                 progressBar.visibility = View.GONE
-                // DÜZELTME: Hata mesajı çevrildi
                 textConnectionStatus.setText(R.string.text_server_error)
             }
         }
@@ -504,7 +587,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         putExtra("EXTRA_IS_M3U", profile.isM3u)
     }
 
-    // DÜZELTME: Diyalog başlıkları ve butonlar çevrildi
     private fun showProfileSelectionDialog() {
         if (allProfiles.isEmpty()) { startActivity(Intent(this, AddProfileActivity::class.java)); return }
         val profileNames = allProfiles.map { it.profileName }.toTypedArray()
@@ -536,7 +618,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private fun editProfile(profile: Profile) { val intent = Intent(this, AddProfileActivity::class.java).apply { putExtra("EXTRA_EDIT_ID", profile.id); putExtra("EXTRA_PROFILE_NAME", profile.profileName); putExtra("EXTRA_USERNAME", profile.username); putExtra("EXTRA_PASSWORD", profile.password); putExtra("EXTRA_SERVER_URL", profile.serverUrl) }; startActivity(intent) }
 
     private fun clearBottomBar() {
-        // DÜZELTME: Durum metinleri çevrildi
         textConnectionStatus.setText(R.string.status_not_connected)
         textConnectionStatus.setTextColor(getColor(android.R.color.darker_gray))
         textStatusProfileName.setText(R.string.text_no_profile)
@@ -549,12 +630,10 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private fun openSeriesList() { activeProfile?.let { val intent = Intent(this, SeriesListActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
     private fun showProfileWarning() { Toast.makeText(this, getString(R.string.msg_select_profile), Toast.LENGTH_SHORT).show(); showProfileSelectionDialog() }
 
-    // DÜZELTME: Tarih formatı locale'e göre ayarlandı
     private fun formatTimestamp(timestamp: String): String {
         return try {
             val expiryLong = timestamp.toLong() * 1000
             val date = Date(expiryLong)
-            // Cihazın kendi diline göre ay ve gün ismi göster
             val sdf = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
             sdf.timeZone = TimeZone.getDefault()
             sdf.format(date)

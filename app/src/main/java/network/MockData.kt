@@ -23,52 +23,114 @@ object MockData {
         }
     """.trimIndent()
 
-    // 2. KATEGORİ LİSTESİ
-    val LIVE_CATEGORIES = """
-        [
-            {
-                "category_id": "1",
-                "category_name": "Google Play Review Streams",
-                "parent_id": 0
-            }
-        ]
-    """.trimIndent()
+    // --- KATEGORİLER ---
+    val LIVE_CATEGORIES = """[{"category_id": "1", "category_name": "Test Channels", "parent_id": 0}]"""
 
-    // 3. CANLI YAYIN LİSTESİ (Güncellenmiş, Güvenli ve Hızlı Linkler)
-    // DİKKAT: "directSource" anahtarı senin Models.kt dosyanla birebir uyumlu yapıldı.
-// 3. CANLI YAYIN LİSTESİ (Güncellenmiş Linkler)
+    val VOD_CATEGORIES = """[{"category_id": "2", "category_name": "Test Movies", "parent_id": 0}]"""
+
+    val SERIES_CATEGORIES = """[{"category_id": "3", "category_name": "Test Series", "parent_id": 0}]"""
+
+    // --- 1. CANLI YAYINLAR (LIVE) ---
     val LIVE_STREAMS = """
         [
             {
                 "num": 1,
-                "name": "Sintel (MP4 - Google Server)",
+                "name": "Big Buck Bunny 24/7 TV",
                 "stream_type": "live",
                 "stream_id": 1001,
-                "stream_icon": "https://upload.wikimedia.org/wikipedia/commons/8/82/Sintel_poster.jpg",
-                "category_id": "1",
-                "directSource": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4"
-            },
-            {
-                "num": 2,
-                "name": "Big Buck Bunny (MP4 - Google Server)",
-                "stream_type": "live",
-                "stream_id": 1002,
                 "stream_icon": "https://upload.wikimedia.org/wikipedia/commons/c/c5/Big_buck_bunny_poster_big.jpg",
                 "category_id": "1",
                 "directSource": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-            },
-            {
-                "num": 3,
-                "name": "Tears of Steel (4K HLS)",
-                "stream_type": "live",
-                "stream_id": 1003,
-                "stream_icon": "https://mango.blender.org/wp-content/uploads/2012/09/poster_half_res.png",
-                "category_id": "1",
-                "directSource": "https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8"
             }
         ]
     """.trimIndent()
 
-    // Diğer boş listeler
+    // --- 2. FİLMLER (VOD) ---
+    val VOD_STREAMS = """
+        [
+            {
+                "num": 1,
+                "name": "Sintel (Movie)",
+                "stream_type": "movie",
+                "stream_id": 2001,
+                "stream_icon": "https://upload.wikimedia.org/wikipedia/commons/8/82/Sintel_poster.jpg",
+                "category_id": "2",
+                "container_extension": "mp4",
+                "rating": 8.5,
+                "added": "1699999999"
+            }
+        ]
+    """.trimIndent()
+
+    // --- 3. DİZİLER (SERIES) ---
+    val SERIES_STREAMS = """
+        [
+            {
+                "num": 1,
+                "name": "Tears of Steel (Series)",
+                "series_id": 3001,
+                "stream_icon": "https://mango.blender.org/wp-content/uploads/2012/09/poster_half_res.png",
+                "cover": "https://mango.blender.org/wp-content/uploads/2012/09/poster_half_res.png",
+                "category_id": "3",
+                "rating": 7.9,
+                "last_modified": "1699999999"
+            }
+        ]
+    """.trimIndent()
+
+    // --- 4. DİZİ DETAYI (Bölümler) ---
+    val SERIES_INFO = """
+        {
+            "seasons": [{"season_number": 1, "name": "Season 1"}],
+            "info": {
+                "name": "Tears of Steel",
+                "cover": "https://mango.blender.org/wp-content/uploads/2012/09/poster_half_res.png",
+                "plot": "In a dystopian future, a group of soldiers and scientists fights to save the world.",
+                "genre": "Sci-Fi",
+                "releaseDate": "2012",
+                "rating": "7.9"
+            },
+            "episodes": {
+                "1": [
+                    {
+                        "id": "300101",
+                        "episode_num": 1,
+                        "title": "Chapter 1: The Beginning",
+                        "container_extension": "mp4",
+                        "info": {
+                            "movie_image": "https://mango.blender.org/wp-content/uploads/2012/09/poster_half_res.png",
+                            "plot": "First episode of the test series.",
+                            "duration": "12:00"
+                        }
+                    }
+                ]
+            }
+        }
+    """.trimIndent()
+
+    // --- 5. FİLM DETAYI (VOD INFO) - İŞTE EKSİK OLAN BU! ---
+    val VOD_INFO = """
+        {
+            "info": {
+                "movie_image": "https://upload.wikimedia.org/wikipedia/commons/8/82/Sintel_poster.jpg",
+                "name": "Sintel",
+                "plot": "A lonely young woman, Sintel, helps and befriends a dragon, whom she calls Scales.",
+                "cast": "Halina Reijn, Thom Hoffman",
+                "director": "Colin Levy",
+                "genre": "Animation, Fantasy",
+                "release_date": "2010-09-27",
+                "rating": "7.5",
+                "duration": "14:48",
+                "youtube_trailer": ""
+            },
+            "movie_data": {
+                "stream_id": 2001,
+                "container_extension": "mp4",
+                "name": "Sintel",
+                "category_id": "2"
+            }
+        }
+    """.trimIndent()
+
     val EMPTY_LIST = "[]"
 }
