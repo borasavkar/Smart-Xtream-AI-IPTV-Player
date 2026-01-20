@@ -51,7 +51,10 @@
             android:name=".PlayerActivity"
             android:exported="false"
             android:supportsPictureInPicture="true"
-            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboardHidden"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
+            android:screenOrientation="sensor"
+            android:resizeableActivity="true"
+            tools:ignore="LockedOrientationActivity"
             android:theme="@style/Theme.smartxtream" />
         <activity
             android:name=".SubscriptionActivity"

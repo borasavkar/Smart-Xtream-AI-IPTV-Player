@@ -3,6 +3,8 @@ package com.bybora.smartxtream
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.TrafficStats
 import android.net.Uri
 import android.os.Bundle
@@ -36,6 +38,8 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.PlayerView
+import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import com.bybora.smartxtream.database.AppDatabase
 import com.bybora.smartxtream.database.Favorite
 import com.bybora.smartxtream.database.Interaction
@@ -92,8 +96,8 @@ class PlayerActivity : BaseActivity() {
     private var smoothedSpeed: Double = 0.0
 
     private val handler = Handler(Looper.getMainLooper())
-    // ... Diğer değişkenlerin altına ekle
     private var isFallbackTried = false
+
     private val progressRunnable = object : Runnable {
         override fun run() {
             checkProgress()
@@ -128,6 +132,14 @@ class PlayerActivity : BaseActivity() {
             checkFavoriteStatus()
         } else {
             finish()
+        }
+
+        // EKRAN MODU BAŞLANGIÇ KONTROLÜ
+        if (isTvDevice()) {
+            hideSystemUI()
+        } else {
+            val orientation = resources.configuration.orientation
+            adjustFullScreen(orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
         }
     }
 
@@ -219,6 +231,7 @@ class PlayerActivity : BaseActivity() {
     private fun initializePlayer() {
         if (player == null) {
             try {
+                // --- URL HAZIRLAMA ---
                 val finalUrl = if (directUrl != null) {
                     directUrl!!
                 } else {
@@ -237,39 +250,151 @@ class PlayerActivity : BaseActivity() {
                     }
                 }
 
-                trackSelector = DefaultTrackSelector(this)
-                applyGlobalSettings(trackSelector!!)
+                // ============================================================
+                // 1. İSİM ANALİZİ: BU KANAL 4K MI? (AKILLI AYRIM)
+                // ============================================================
+                // Kanalın adında "4K", "UHD" veya "2160" geçiyorsa 4K olarak işaretle.
+                val isLikely4K = streamName.contains("4K", ignoreCase = true) ||
+                        streamName.contains("UHD", ignoreCase = true) ||
+                        streamName.contains("2160", ignoreCase = true)
 
+                // ============================================================
+                // 2. TRACK SELECTOR VE TÜNELLEME
+                // ============================================================
+                trackSelector = DefaultTrackSelector(this)
+                val (maxWidth, maxHeight) = getMaxSupportedResolution()
+                val (isWifi, isFastConnection) = getNetworkInfo()
+                val isTv = isTvDevice()
+
+                val parametersBuilder = trackSelector!!.buildUponParameters()
+
+                // TV ise Tünelleme AÇ
+                if (isTv) {
+                    parametersBuilder.setTunnelingEnabled(true)
+                } else {
+                    parametersBuilder.setTunnelingEnabled(false)
+                }
+
+                // İnternet Hızına Göre Limitler
+                when {
+                    !isWifi && !isFastConnection -> {
+                        parametersBuilder.setMaxVideoSize(1280, 720)
+                        parametersBuilder.setMaxVideoBitrate(5_000_000)
+                    }
+                    !isWifi -> {
+                        parametersBuilder.setMaxVideoSize(1920, 1080)
+                        parametersBuilder.setMaxVideoBitrate(12_000_000)
+                    }
+                    isFastConnection -> {
+                        parametersBuilder.setMaxVideoSize(maxWidth, maxHeight)
+                        parametersBuilder.setMaxVideoBitrate(Int.MAX_VALUE)
+                    }
+                    else -> {
+                        parametersBuilder.setMaxVideoSize(1920, 1080)
+                        parametersBuilder.setMaxVideoBitrate(15_000_000)
+                    }
+                }
+                parametersBuilder.setPreferredVideoMimeTypes(MimeTypes.VIDEO_H265, MimeTypes.VIDEO_H264)
+                applyGlobalSettings(trackSelector!!)
+                trackSelector?.parameters = parametersBuilder.build()
+
+
+                // ============================================================
+                // 3. NETWORK (SAĞLAM BAĞLANTI)
+                // ============================================================
                 val baseClient: OkHttpClient = RetrofitClient.okHttpClient
-                val okHttpClient = baseClient.newBuilder().connectTimeout(30, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).followRedirects(true).followSslRedirects(true).build()
+                val okHttpClient = baseClient.newBuilder()
+                    .connectionPool(okhttp3.ConnectionPool(5, 5, TimeUnit.MINUTES))
+                    .connectTimeout(60, TimeUnit.SECONDS)
+                    .readTimeout(60, TimeUnit.SECONDS)
+                    .writeTimeout(60, TimeUnit.SECONDS)
+                    .followRedirects(true)
+                    .followSslRedirects(true)
+                    .retryOnConnectionFailure(true)
+                    .build()
+
                 val userAgent = "IPTVSmartersPro"
                 val okHttpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient).setUserAgent(userAgent)
                 val dataSourceFactory: DataSource.Factory = if (streamType != "live") setupCache(this, okHttpDataSourceFactory) else okHttpDataSourceFactory
 
-                // RENDER MODE: ON (Donanım + Yazılım Hibrit)
-                val renderersFactory = DefaultRenderersFactory(this)
-                    .setEnableDecoderFallback(true) // Donanımsal çözücü yetmezse yazılımsala geç
-                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
 
-                // --- 4K & UHD OPTİMİZASYONU (GÜNCELLENDİ) ---
-                // Standart ayarlar 4K bitrate'ini taşıyamaz. Buffer boyutunu ve RAM limitini artırıyoruz.
-
-                val loadControl = DefaultLoadControl.Builder()
-                    .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
-                    .setBufferDurationsMs(
-                        10000, // Min Buffer: 10 saniye (Yayın akarken en az bu kadar tutsun)
-                        50000, // Max Buffer: 50 saniye (İnternet iyiyken depolasın)
-                        1500,  // Oynatmaya Başlama: 1.5 saniye (Zapping hızı korunur)
-                        3000   // Donarsa Tekrar Başlama: 3 saniye doldurup devam etsin
+                // ============================================================
+                // 4. VLC MODU (KİRLİ SİNYAL İZNİ)
+                // ============================================================
+                val extractorsFactory = DefaultExtractorsFactory()
+                    .setTsExtractorFlags(
+                        DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or
+                                DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
                     )
-                    .setTargetBufferBytes(128 * 1024 * 1024) // KRİTİK: 4K için 128MB önbellek izni ver (Standartı çok düşüktür)
-                    .setPrioritizeTimeOverSizeThresholds(false) // Boyut sınırına (128MB) öncelik ver
+
+
+                // ============================================================
+                // 5. LOAD CONTROL (TAMPON YÖNETİMİ)
+                // ============================================================
+                val loadControl = if (streamType == "live") {
+                    // 4K olsa da FHD olsa da depomuz büyük olsun (200MB), zarar gelmez.
+                    DefaultLoadControl.Builder()
+                        .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
+                        .setBufferDurationsMs(
+                            15000,  // Min: 15 saniye
+                            60000,  // Max: 60 saniye
+                            2500,   // Start: 2.5 saniye
+                            10000   // Rebuffer
+                        )
+                        .setTargetBufferBytes(200 * 1024 * 1024)
+                        .setPrioritizeTimeOverSizeThresholds(true)
+                        .build()
+                } else {
+                    // VOD
+                    DefaultLoadControl.Builder()
+                        .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE * 2))
+                        .setBufferDurationsMs(15000, 120000, 2500, 5000)
+                        .setTargetBufferBytes(130 * 1024 * 1024)
+                        .setPrioritizeTimeOverSizeThresholds(true)
+                        .setBackBuffer(0, false)
+                        .build()
+                }
+
+
+                // ============================================================
+                // 6. MEDIA SOURCE (DİNAMİK GECİKME AYARI)
+                // ============================================================
+
+                // Eğer kanal adında "4K/UHD" varsa 30sn gecikme ver (Güvenli).
+                // Yoksa 12sn gecikme ver (Hızlı/Maç Modu).
+                val targetLatency = if (isLikely4K) 30000L else 12000L
+
+                val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory)
+                    .setLiveTargetOffsetMs(targetLatency)
+                    .setLoadErrorHandlingPolicy(object : androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy() {
+                        override fun getRetryDelayMsFor(loadErrorInfo: androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy.LoadErrorInfo): Long { return 1000 }
+                        override fun getMinimumLoadableRetryCount(dataType: Int): Int { return 10 }
+                    })
+
+
+                // ============================================================
+                // 7. PLAYER BUILD
+                // ============================================================
+                val renderersFactory = DefaultRenderersFactory(this)
+                    .setEnableDecoderFallback(true)
+                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+                    .setAllowedVideoJoiningTimeMs(10000)
+
+                player = ExoPlayer.Builder(this, renderersFactory)
+                    .setMediaSourceFactory(mediaSourceFactory)
+                    .setTrackSelector(trackSelector!!)
+                    .setLoadControl(loadControl)
+                    .setAudioAttributes(
+                        androidx.media3.common.AudioAttributes.Builder()
+                            .setUsage(C.USAGE_MEDIA)
+                            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                            .build(),
+                        true
+                    )
+                    .setDeviceVolumeControlEnabled(true)
+                    .setHandleAudioBecomingNoisy(true)
+                    .setWakeMode(C.WAKE_MODE_NETWORK)
                     .build()
-
-
-                val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory).setLiveTargetOffsetMs(5000)
-
-                player = ExoPlayer.Builder(this, renderersFactory).setMediaSourceFactory(mediaSourceFactory).setTrackSelector(trackSelector!!).setLoadControl(loadControl).setAudioAttributes(androidx.media3.common.AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), true).setDeviceVolumeControlEnabled(true).setHandleAudioBecomingNoisy(true).build()
 
                 playerView?.player = player
                 playerView?.keepScreenOn = true
@@ -297,11 +422,23 @@ class PlayerActivity : BaseActivity() {
                 })
 
             } catch (e: Exception) {
-                showDetailedErrorDialog(
-                    getString(R.string.title_init_error),
-                    e.message ?: getString(R.string.error_unknown))
+                showDetailedErrorDialog(getString(R.string.title_init_error), e.message ?: getString(R.string.error_unknown))
             }
         }
+    }
+
+    // ============================================================
+    // YARDIMCI FONKSİYONLAR
+    // ============================================================
+    private fun getNetworkInfo(): Pair<Boolean, Boolean> {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val network = connectivityManager?.activeNetwork
+        val capabilities = connectivityManager?.getNetworkCapabilities(network)
+        val isWifi = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
+                capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+        val downstreamBandwidth = capabilities?.linkDownstreamBandwidthKbps ?: 0
+        val isFastConnection = downstreamBandwidth > 15000
+        return Pair(isWifi, isFastConnection)
     }
 
     private fun setupCache(context: Context, upstreamFactory: DataSource.Factory): DataSource.Factory {
@@ -428,26 +565,18 @@ class PlayerActivity : BaseActivity() {
     private fun handlePlayerError(error: PlaybackException) {
         val cause = error.cause
         // --- AKILLI KURTARMA MEKANİZMASI ---
-        // Eğer hata sunucu kaynaklıysa (404 Bulunamadı, 403 Yasaklı, 405 İzin Yok)
-        // Ve yayın CANLI ise, ve daha önce diğer yolu denemediysek:
-        if (streamType == "live" && !isFallbackTried && cause is HttpDataSource.InvalidResponseCodeException) {
+        if (streamType == "live" && !isFallbackTried) {
+            val isCodecError = error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED
+            val isNetError = cause is HttpDataSource.InvalidResponseCodeException && (cause.responseCode in 400..499)
 
-            val code = cause.responseCode
-            // Genelde 400 ile 500 arasındaki hatalar uzantı sorunudur
-            if (code in 400..499) {
-                isFallbackTried = true // Denedim diye işaretle (Sonsuz döngü olmasın)
-
-                // Uzantıyı değiştir: ts ise m3u8 yap, m3u8 ise ts yap
+            if (isCodecError || isNetError) {
+                isFallbackTried = true
                 fileExtension = if (fileExtension == "ts") "m3u8" else "ts"
-
-                // Player'ı serbest bırak ve yeni uzantıyla tekrar başlat
+                Toast.makeText(this, "Alternatif yayın deneniyor...", Toast.LENGTH_SHORT).show()
                 player?.release()
                 player = null
-                initializePlayer() // Tekrar başlat
-
-                // Kullanıcıya çaktırmadan alttan ufak bilgi ver (İstersen bunu sil)
-                // Toast.makeText(this, "Alternatif yayın deneniyor...", Toast.LENGTH_SHORT).show()
-                return // Fonksiyondan çık, hata mesajı gösterme
+                initializePlayer()
+                return
             }
         }
         // -----------------------------------
@@ -556,20 +685,16 @@ class PlayerActivity : BaseActivity() {
                     for (k in 0 until group.length) {
                         if (info.getTrackSupport(i, j, k) == C.FORMAT_HANDLED) {
                             val f = group.getFormat(k)
-
-                            // DÜZELTİLEN KISIM:
                             val name = when (type) {
                                 C.TRACK_TYPE_VIDEO -> "${f.width}x${f.height}"
                                 C.TRACK_TYPE_AUDIO -> "${f.language ?: "und"}"
                                 C.TRACK_TYPE_TEXT -> {
                                     val lang = f.language ?: "und"
-                                    // Eğer etiket yoksa strings.xml'den "Bilinmeyen" çek
                                     val label = f.label ?: getString(R.string.label_unknown)
                                     "$lang ($label)"
                                 }
                                 else -> "?"
                             }
-
                             list.add(TrackInfo(name, j, k, i))
                         }
                     }
@@ -627,15 +752,11 @@ class PlayerActivity : BaseActivity() {
             db.interactionDao().logInteraction(interact)
         }
     }
-    // --- PIP (Pencere İçinde Pencere) MODU BAŞLANGICI ---
 
-    // 1. Kullanıcı uygulamadan çıkarken (Home tuşu veya Gesture) PiP'i tetikle
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            // Eğer player oynuyorsa PiP moduna gir
             if (player != null && player!!.isPlaying) {
-                // 16:9 Oranında bir pencere ayarla
                 val aspectRatio = android.util.Rational(16, 9)
                 val params = android.app.PictureInPictureParams.Builder()
                     .setAspectRatio(aspectRatio)
@@ -645,13 +766,10 @@ class PlayerActivity : BaseActivity() {
         }
     }
 
-    // 2. PiP Moduna girip çıkarken ekranı düzenle (Butonları gizle/göster)
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-
         if (isInPictureInPictureMode) {
-            // PiP Moduna GİRDİ: Kontrolleri GİZLE
-            playerView?.useController = false // Player çubuğunu kapat
+            playerView?.useController = false
             btnBack.visibility = View.GONE
             btnSettings.visibility = View.GONE
             btnSubtitle.visibility = View.GONE
@@ -661,19 +779,54 @@ class PlayerActivity : BaseActivity() {
             textResolution.visibility = View.GONE
             btnNextEpisode.visibility = View.GONE
         } else {
-            // PiP Modundan ÇIKTI: Kontrolleri GÖSTER
-            playerView?.useController = true // Player çubuğunu aç
+            playerView?.useController = true
             btnBack.visibility = View.VISIBLE
-            // Diğer butonların görünürlüğü, önceki durumlarına göre ayarlanmalı
-            // Basitçe görünür yapabiliriz veya playerView listener'ı zaten halleder.
-            // Biz sadece ana butonları açalım:
-            if (streamType != "series") {
-                btnFavoritePlayer.visibility = View.VISIBLE
-            }
-            // Controller listener tetiklendiğinde diğerleri düzelir
+            if (streamType != "series") btnFavoritePlayer.visibility = View.VISIBLE
         }
     }
-    // --- PIP MODU BİTİŞİ ---
 
     override fun onStop() { super.onStop(); handler.removeCallbacks(progressRunnable); saveProgress(); player?.release(); player = null }
+
+    // ============================================================
+    // EKRAN YÖNETİMİ (MOBİL İÇİN TAM EKRAN GEÇİŞİ)
+    // ============================================================
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Sadece Mobildeyken bu ayarı yap, TV zaten hep yataydır.
+        if (!isTvDevice()) {
+            adjustFullScreen(newConfig.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
+        }
+    }
+
+    private fun adjustFullScreen(isLandscape: Boolean) {
+        if (isLandscape) {
+            // --- YATAY MOD (TAM EKRAN) ---
+            hideSystemUI()
+            // Görüntü oranını koru (sündürme yapma), ekranın içine sığdır
+            playerView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+        } else {
+            // --- DİKEY MOD (NORMAL) ---
+            showSystemUI()
+            playerView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+        }
+    }
+
+    private fun hideSystemUI() {
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).let { controller ->
+            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        }
+    }
+
+    private fun showSystemUI() {
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, true)
+        androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+    }
+
+    // Cihazın TV olup olmadığını kontrol eden yardımcı fonksiyon
+    private fun isTvDevice(): Boolean {
+        val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
+        return uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+    }
 }
