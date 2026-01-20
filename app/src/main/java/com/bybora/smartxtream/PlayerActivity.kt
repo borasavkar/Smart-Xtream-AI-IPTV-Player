@@ -134,15 +134,19 @@ class PlayerActivity : BaseActivity() {
             finish()
         }
 
-        // EKRAN MODU BAŞLANGIÇ KONTROLÜ
         if (isTvDevice()) {
+            // TV CİHAZI:
+            // 1. Sistem çubuklarını gizle (daha temiz görüntü için)
             hideSystemUI()
+            // 2. Aspect Ratio'yu KİLİTLE (Asla bozulmasın)
+            playerView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
         } else {
+            // MOBİL CİHAZ:
+            // Başlangıçta yan mı tutuluyor dik mi kontrol et ve ona göre şekil al
             val orientation = resources.configuration.orientation
             adjustFullScreen(orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
         }
     }
-
     private fun initViews() {
         playerView = findViewById(R.id.player_view)
         try { topControls = findViewById(R.id.top_controls) } catch (_: Exception) {}
@@ -788,25 +792,46 @@ class PlayerActivity : BaseActivity() {
     override fun onStop() { super.onStop(); handler.removeCallbacks(progressRunnable); saveProgress(); player?.release(); player = null }
 
     // ============================================================
-    // EKRAN YÖNETİMİ (MOBİL İÇİN TAM EKRAN GEÇİŞİ)
+    // EKRAN YÖNETİMİ (GÜVENLİ TAM EKRAN + ÇENTİK DESTEĞİ)
     // ============================================================
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
-        // Sadece Mobildeyken bu ayarı yap, TV zaten hep yataydır.
-        if (!isTvDevice()) {
-            adjustFullScreen(newConfig.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
-        }
+
+        // TV ise karışma
+        if (isTvDevice()) return
+
+        // Mobil ise ayarla
+        adjustFullScreen(newConfig.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
     }
 
     private fun adjustFullScreen(isLandscape: Boolean) {
         if (isLandscape) {
-            // --- YATAY MOD (TAM EKRAN) ---
+            // --- MOBİL YATAY MOD ---
             hideSystemUI()
-            // Görüntü oranını koru (sündürme yapma), ekranın içine sığdır
+
+            // 1. ÇENTİK (NOTCH) KİLİDİNİ AÇ
+            // Bu kod, siyah şeridi kaldırır ve videonun kameranın yanlarına kadar gitmesini sağlar.
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                val params = window.attributes
+                params.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                window.attributes = params
+            }
+
+            // 2. GÖRÜNTÜ MODU: FIT (EN GÜVENLİSİ)
+            // Asla sündürmez, asla kesmez. Orijinal kaliteyi korur.
             playerView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+
         } else {
-            // --- DİKEY MOD (NORMAL) ---
+            // --- MOBİL DİKEY MOD ---
             showSystemUI()
+
+            // Çentik ayarını normale döndür
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                val params = window.attributes
+                params.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+                window.attributes = params
+            }
+
             playerView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
         }
     }
@@ -824,7 +849,6 @@ class PlayerActivity : BaseActivity() {
         androidx.core.view.WindowInsetsControllerCompat(window, window.decorView).show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
     }
 
-    // Cihazın TV olup olmadığını kontrol eden yardımcı fonksiyon
     private fun isTvDevice(): Boolean {
         val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
         return uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
