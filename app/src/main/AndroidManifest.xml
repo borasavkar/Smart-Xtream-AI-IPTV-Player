@@ -17,6 +17,7 @@
         android:theme="@style/Theme.smartxtream"
         android:usesCleartextTraffic="true"
         android:largeHeap="true"
+        android:hardwareAccelerated="true"
         android:banner="@drawable/tv_banner">
         <activity
             android:name=".IntroActivity"

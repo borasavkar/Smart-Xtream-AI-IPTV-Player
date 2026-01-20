@@ -248,21 +248,26 @@ class PlayerActivity : BaseActivity() {
 
                 // RENDER MODE: ON (Donanım + Yazılım Hibrit)
                 val renderersFactory = DefaultRenderersFactory(this)
-                    .setEnableDecoderFallback(true)
+                    .setEnableDecoderFallback(true) // Donanımsal çözücü yetmezse yazılımsala geç
                     .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
 
-                // Standart Buffer
+                // --- 4K & UHD OPTİMİZASYONU (GÜNCELLENDİ) ---
+                // Standart ayarlar 4K bitrate'ini taşıyamaz. Buffer boyutunu ve RAM limitini artırıyoruz.
+
                 val loadControl = DefaultLoadControl.Builder()
-                    .setPrioritizeTimeOverSizeThresholds(true)
+                    .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
                     .setBufferDurationsMs(
-                        3000,  // Min Buffer: 3 saniye (Düşük tutuldu ki hemen hazırlansın)
-                        30000, // Max Buffer: 30 saniye
-                        1000,  // Oynatmaya Başlama: Sadece 1 saniye dolunca başla (HIZ İÇİN KRİTİK)
-                        2000   // Yeniden Tamponlama: Donarsa 2 saniye dolunca devam et
+                        10000, // Min Buffer: 10 saniye (Yayın akarken en az bu kadar tutsun)
+                        50000, // Max Buffer: 50 saniye (İnternet iyiyken depolasın)
+                        1500,  // Oynatmaya Başlama: 1.5 saniye (Zapping hızı korunur)
+                        3000   // Donarsa Tekrar Başlama: 3 saniye doldurup devam etsin
                     )
+                    .setTargetBufferBytes(128 * 1024 * 1024) // KRİTİK: 4K için 128MB önbellek izni ver (Standartı çok düşüktür)
+                    .setPrioritizeTimeOverSizeThresholds(false) // Boyut sınırına (128MB) öncelik ver
                     .build()
 
-                val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory).setLiveTargetOffsetMs(10_000)
+
+                val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory).setLiveTargetOffsetMs(5000)
 
                 player = ExoPlayer.Builder(this, renderersFactory).setMediaSourceFactory(mediaSourceFactory).setTrackSelector(trackSelector!!).setLoadControl(loadControl).setAudioAttributes(androidx.media3.common.AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), true).setDeviceVolumeControlEnabled(true).setHandleAudioBecomingNoisy(true).build()
 

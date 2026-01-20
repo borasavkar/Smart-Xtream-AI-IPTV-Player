@@ -2,6 +2,7 @@ package com.bybora.smartxtream.network
 
 object MockData {
     // 1. GİRİŞ BAŞARILI CEVABI
+    // DİKKAT: url kısmını 'http://google.com' yaptık.
     val LOGIN_SUCCESS = """
         {
             "user_info": {
@@ -14,7 +15,7 @@ object MockData {
                 "is_trial": "0"
             },
             "server_info": {
-                "url": "http://mock-server",
+                "url": "http://google.com",
                 "port": "80",
                 "https_port": "443",
                 "server_protocol": "http",
@@ -25,9 +26,7 @@ object MockData {
 
     // --- KATEGORİLER ---
     val LIVE_CATEGORIES = """[{"category_id": "1", "category_name": "Test Channels", "parent_id": 0}]"""
-
     val VOD_CATEGORIES = """[{"category_id": "2", "category_name": "Test Movies", "parent_id": 0}]"""
-
     val SERIES_CATEGORIES = """[{"category_id": "3", "category_name": "Test Series", "parent_id": 0}]"""
 
     // --- 1. CANLI YAYINLAR (LIVE) ---
@@ -78,7 +77,7 @@ object MockData {
         ]
     """.trimIndent()
 
-    // --- 4. DİZİ DETAYI (Bölümler) ---
+    // --- 4. DİZİ DETAYI ---
     val SERIES_INFO = """
         {
             "seasons": [{"season_number": 1, "name": "Season 1"}],
@@ -108,7 +107,7 @@ object MockData {
         }
     """.trimIndent()
 
-    // --- 5. FİLM DETAYI (VOD INFO) - İŞTE EKSİK OLAN BU! ---
+    // --- 5. FİLM DETAYI ---
     val VOD_INFO = """
         {
             "info": {
