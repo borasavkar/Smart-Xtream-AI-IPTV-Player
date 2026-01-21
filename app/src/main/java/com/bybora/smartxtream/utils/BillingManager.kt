@@ -13,6 +13,7 @@ class BillingManager(private val context: Context) {
     val isPremium = _isPremium.asStateFlow()
 
     companion object {
+        // Senin mevcut ürün ID'lerin
         const val SUB_MONTHLY = "sub_monthly"
         const val SUB_YEARLY = "sub_yearly"
         const val LIFETIME = "lifetime_premium"
@@ -24,15 +25,19 @@ class BillingManager(private val context: Context) {
                 handlePurchase(purchase)
             }
         } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
-            // Kullanıcı iptal etti
+            // Kullanıcı iptal etti, bir şey yapmaya gerek yok
         } else {
-            // Hata
+            // Hata oluştu
         }
     }
 
     private val billingClient = BillingClient.newBuilder(context)
         .setListener(purchasesUpdatedListener)
-        .enablePendingPurchases()
+        .enablePendingPurchases(
+            PendingPurchasesParams.newBuilder()
+                .enableOneTimeProducts()
+                .build()
+        )
         .build()
 
     fun startConnection() {
@@ -42,25 +47,33 @@ class BillingManager(private val context: Context) {
                     checkActivePurchases()
                 }
             }
+
             override fun onBillingServiceDisconnected() {
-                // Bağlantı koptu
+                // Bağlantı koparsa tekrar denenebilir
             }
         })
     }
 
+    // Aktif abonelikleri kontrol eden standart fonksiyon
     private fun checkActivePurchases() {
-        // 1. Abonelikleri Kontrol Et
-        billingClient.queryPurchasesAsync(
-            QueryPurchasesParams.newBuilder().setProductType(ProductType.SUBS).build()
-        ) { _, purchases ->
+        // 1. Abonelikleri (SUBS) Kontrol Et
+        val querySubParams = QueryPurchasesParams.newBuilder()
+            .setProductType(ProductType.SUBS)
+            .build()
+
+        billingClient.queryPurchasesAsync(querySubParams) { _, purchases ->
             if (purchases.isNotEmpty()) {
+                // Aktif bir abonelik var
                 _isPremium.value = true
             } else {
-                // 2. Abonelik yoksa, Tek Seferlik (Ömür Boyu) satın almayı kontrol et
-                billingClient.queryPurchasesAsync(
-                    QueryPurchasesParams.newBuilder().setProductType(ProductType.INAPP).build()
-                ) { _, inAppPurchases ->
+                // 2. Abonelik yoksa, Ömür Boyu (INAPP) var mı diye bak
+                val queryInAppParams = QueryPurchasesParams.newBuilder()
+                    .setProductType(ProductType.INAPP)
+                    .build()
+
+                billingClient.queryPurchasesAsync(queryInAppParams) { _, inAppPurchases ->
                     if (inAppPurchases.isNotEmpty()) {
+                        // Ömür boyu satın alım var
                         _isPremium.value = true
                     }
                 }
@@ -85,7 +98,7 @@ class BillingManager(private val context: Context) {
         }
     }
 
-    // --- KRİTİK DÜZELTME: SORGULARI AYIRIYORUZ ---
+    // --- BILLING 8.3.0 UYUMLU SORGULAMA FONKSİYONU ---
     fun queryProductDetails(onDetailsLoaded: (List<ProductDetails>) -> Unit) {
         val combinedList = mutableListOf<ProductDetails>()
 
@@ -103,13 +116,15 @@ class BillingManager(private val context: Context) {
 
         val subsParams = QueryProductDetailsParams.newBuilder().setProductList(subsList).build()
 
-        billingClient.queryProductDetailsAsync(subsParams) { resultSubs, listSubs ->
-            // Abonelik sonuçlarını listeye ekle
-            if (resultSubs.responseCode == BillingClient.BillingResponseCode.OK) {
-                listSubs?.let { combinedList.addAll(it) }
+        // KRİTİK DÜZELTME: Billing 8.3.0 { billingResult, result -> } yapısını kullanır.
+        billingClient.queryProductDetailsAsync(subsParams) { billingResult, result ->
+
+            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                // Liste artık 'result' paketinin içinde (.productDetailsList)
+                result.productDetailsList?.let { combinedList.addAll(it) }
             }
 
-            // 2. Grup: Tek Seferlik (INAPP) - Ömür Boyu
+            // 2. Grup: Tek Seferlik (INAPP - LIFETIME)
             val inAppList = listOf(
                 QueryProductDetailsParams.Product.newBuilder()
                     .setProductId(LIFETIME)
@@ -119,38 +134,48 @@ class BillingManager(private val context: Context) {
 
             val inAppParams = QueryProductDetailsParams.newBuilder().setProductList(inAppList).build()
 
-            // Şimdi bunu soruyoruz
-            billingClient.queryProductDetailsAsync(inAppParams) { resultInApp, listInApp ->
-                if (resultInApp.responseCode == BillingClient.BillingResponseCode.OK) {
-                    listInApp?.let { combinedList.addAll(it) }
+            // İkinci sorgu
+            billingClient.queryProductDetailsAsync(inAppParams) { billingResultInApp, resultInApp ->
+
+                if (billingResultInApp.responseCode == BillingClient.BillingResponseCode.OK) {
+                    resultInApp.productDetailsList?.let { combinedList.addAll(it) }
                 }
 
-                // Hepsini birleştirip ekrana gönderiyoruz
+                // Hepsini birleştirip arayüze gönder
                 onDetailsLoaded(combinedList)
             }
         }
     }
 
     fun launchPurchaseFlow(activity: Activity, productDetails: ProductDetails) {
-        val offerToken = productDetails.subscriptionOfferDetails?.firstOrNull()?.offerToken
-
-        val productParams = if (offerToken != null) {
-            // Abonelik ise offerToken gerekir
-            BillingFlowParams.ProductDetailsParams.newBuilder()
-                .setProductDetails(productDetails)
-                .setOfferToken(offerToken)
-                .build()
+        val productParamsList = if (productDetails.productType == ProductType.SUBS) {
+            // Abonelik ise OfferToken şart
+            val offerToken = productDetails.subscriptionOfferDetails?.firstOrNull()?.offerToken
+            if (offerToken != null) {
+                listOf(
+                    BillingFlowParams.ProductDetailsParams.newBuilder()
+                        .setProductDetails(productDetails)
+                        .setOfferToken(offerToken)
+                        .build()
+                )
+            } else {
+                // Token yoksa hata vermemesi için boş liste (veya log basılabilir)
+                emptyList()
+            }
         } else {
-            // Tek seferlik ise gerekmez
-            BillingFlowParams.ProductDetailsParams.newBuilder()
-                .setProductDetails(productDetails)
-                .build()
+            // Tek seferlik (INAPP) ise OfferToken'a gerek yok
+            listOf(
+                BillingFlowParams.ProductDetailsParams.newBuilder()
+                    .setProductDetails(productDetails)
+                    .build()
+            )
         }
 
-        val flowParams = BillingFlowParams.newBuilder()
-            .setProductDetailsParamsList(listOf(productParams))
-            .build()
-
-        billingClient.launchBillingFlow(activity, flowParams)
+        if (productParamsList.isNotEmpty()) {
+            val flowParams = BillingFlowParams.newBuilder()
+                .setProductDetailsParamsList(productParamsList)
+                .build()
+            billingClient.launchBillingFlow(activity, flowParams)
+        }
     }
 }
