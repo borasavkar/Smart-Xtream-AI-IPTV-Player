@@ -8,7 +8,7 @@
     <string name="btn_trailer">TRAILER</string>
     <string name="btn_back">Back</string>
     <string name="btn_save">Save Profile</string>
-    <string name="btn_add_new">Add New</string>
+    <string name="btn_add_new">Add Profile</string>
     <string name="btn_manage">Manage</string>
     <string name="btn_edit">Edit</string>
     <string name="btn_delete">Delete</string>
@@ -237,4 +237,9 @@
     <string name="msg_conn_error_temp">Connection Error: Temporary Access</string>
     <string name="msg_server_error_offline">Cannot Connect to Server (Offline Mode)</string>
     <string name="trial_status_msg">Trial: %d Days Left</string>
+    <string name="header_recommendations_personal">Recommended for You</string>
+    <string name="header_continue_watching">Continue Watching</string>
+    <string name="sample_category_name">National Channels</string>
+    <string name="sample_category_count">(124)</string>
+    <string name="sample_current_program">Now: News</string>
 </resources>

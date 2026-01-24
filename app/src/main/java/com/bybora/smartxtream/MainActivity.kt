@@ -37,6 +37,9 @@ import java.util.Locale
 import java.util.TimeZone
 import java.util.Calendar
 import android.util.Log
+import kotlinx.coroutines.async
+import com.bybora.smartxtream.database.Favorite
+import com.bybora.smartxtream.database.Interaction
 
 class MainActivity : BaseActivity(), OnChannelClickListener {
 
@@ -55,6 +58,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private lateinit var textExpirationDate: TextView
     private lateinit var progressBar: ProgressBar
     // --- YENİ EKLENENLER ---
+    private lateinit var textSubStatus: TextView
     private lateinit var textTrialCounter: TextView
     private lateinit var billingManager: com.bybora.smartxtream.utils.BillingManager
     // -----------------------
@@ -94,42 +98,58 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         // 2. Yükleniyor işaretini aç
         progressBar.visibility = View.VISIBLE
         // --- YENİ EKLENEN: Deneme Sayacı Başlat ---
-        setupTrialCounter()
+        setupSubscriptionStatus()
 
         // 3. Lisans ve Deneme Kontrolünü Başlat
         checkLicenseAndStart()
     }
     // --- BU FONKSİYONU SINIFIN İÇİNE KOPYALA ---
-    private fun setupTrialCounter() {
-        // BillingManager'ı başlat
-        billingManager = com.bybora.smartxtream.utils.BillingManager(this)
-        billingManager.startConnection()
+    private fun setupSubscriptionStatus() {
+        // BillingManager başlatılmamışsa başlat
+        if (!::billingManager.isInitialized) {
+            billingManager = com.bybora.smartxtream.utils.BillingManager(this)
+            billingManager.startConnection()
+        }
 
         lifecycleScope.launch {
-            // Google Play'den Premium durumunu dinle
+            // 1. ÖNCE PREMIUM KONTROLÜ (En önemlisi)
             billingManager.isPremium.collect { isPremium ->
-                if (isPremium) {
-                    // Kullanıcı SATIN ALMIŞSA (Aylık/Yıllık/Ömür Boyu) -> GİZLE
-                    textTrialCounter.visibility = View.GONE
-                } else {
-                    // Kullanıcı PREMİUM DEĞİLSE -> TrialManager'a sor
-                    TrialManager.checkTrialOnServer(this@MainActivity, object : TrialManager.TrialCheckListener {
-                        override fun onCheckResult(isActive: Boolean, message: String) {
-                            if (isActive) {
-                                // Deneme devam ediyorsa göster (Örn: "Deneme: 5 Gün Kaldı")
-                                textTrialCounter.text = message
-                                textTrialCounter.visibility = View.VISIBLE
-                            } else {
-                                // Süre bittiyse gizle (Zaten giriş yapamayacak)
-                                textTrialCounter.visibility = View.GONE
-                            }
-                        }
-                    })
+                runOnUiThread {
+                    if (isPremium) {
+                        // --- DURUM 1: SATIN ALMIŞ (PREMIUM) ---
+                        textSubStatus.text = "♛ PREMIUM"
+                        textSubStatus.setTextColor(android.graphics.Color.parseColor("#FF1744")) // Şık Neon Kırmızı
+                        // İstersen gölge efekti de verebilirsin:
+                        textSubStatus.setShadowLayer(10f, 0f, 0f, android.graphics.Color.RED)
+                        textSubStatus.visibility = View.VISIBLE
+                    } else {
+                        // --- DURUM 2: SATIN ALMAMIŞ -> DENEME SÜRESİNE BAK ---
+                        checkTrialStatus()
+                    }
                 }
             }
         }
     }
-    // -------------------------------------------
+
+    private fun checkTrialStatus() {
+        TrialManager.checkTrialOnServer(this, object : TrialManager.TrialCheckListener {
+            override fun onCheckResult(isActive: Boolean, message: String) {
+                runOnUiThread {
+                    if (isActive) {
+                        // Deneme Devam Ediyor -> SARI
+                        // message içeriği örn: "Deneme: 5 Gün Kaldı"
+                        textSubStatus.text = message
+                        textSubStatus.setTextColor(android.graphics.Color.parseColor("#FFEB3B")) // Sarı
+                        textSubStatus.setShadowLayer(0f, 0f, 0f, 0) // Gölgeyi kapat
+                        textSubStatus.visibility = View.VISIBLE
+                    } else {
+                        // Deneme Bitmiş -> GİZLE veya "Süre Doldu" yaz
+                        textSubStatus.visibility = View.GONE
+                    }
+                }
+            }
+        })
+    }
 
     private fun checkLicenseAndStart() {
         // A. Premium Kontrolü (Hızlı, Yerel)
@@ -253,6 +273,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         progressBar = findViewById(R.id.home_loader)
         // --- YENİ EKLENEN ---
         textTrialCounter = findViewById(R.id.text_trial_counter)
+        textSubStatus = findViewById(R.id.text_sub_status)
         // --------------------
 
         cardTv = findViewById(R.id.card_tv)
@@ -389,19 +410,22 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         }
     }
 
-// MainActivity.kt içindeki loadAllContent fonksiyonunu bununla değiştir:
-
     private fun loadAllContent(profile: Profile) {
         progressBar.visibility = View.VISIBLE
 
         lifecycleScope.launch {
             try {
-                // 1. VERİ İNDİRME (Aynı kalıyor)
-                val (channels, movies, series, epgList) = withContext(Dispatchers.IO) {
+                // 1. VERİLERİ ÇEK (GEÇMİŞ + FAVORİLER EKLENDİ)
+                val (channels, movies, series, epgList, history, favorites) = withContext(Dispatchers.IO) {
                     var ch: List<LiveStream> = emptyList()
                     var mv: List<VodStream> = emptyList()
                     var sr: List<SeriesStream> = emptyList()
                     var ep: List<EpgListing>? = null
+
+
+                    val userHist = try { db.interactionDao().getAllInteractions() } catch (e: Exception) { emptyList<Interaction>() }
+                    // YENİ: Favorileri Çekiyoruz
+                    val userFavs = try { db.favoriteDao().getAllFavoritesSync() } catch (e: Exception) { emptyList<Favorite>() }
 
                     if (ContentCache.hasDataFor(profile.id)) {
                         ch = ContentCache.cachedChannels
@@ -410,118 +434,101 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                         ep = ContentCache.cachedEpg
                     } else {
                         val apiService = RetrofitClient.createService(profile.serverUrl)
-                        try { val r = apiService.getLiveStreams(profile.username, profile.password); if (r.isSuccessful) ch = r.body() ?: emptyList() } catch (e: Exception) {}
-                        try { val r = apiService.getVodStreams(profile.username, profile.password); if (r.isSuccessful) mv = r.body() ?: emptyList() } catch (e: Exception) {}
-                        try { val r = apiService.getSeries(profile.username, profile.password); if (r.isSuccessful) sr = r.body() ?: emptyList() } catch (e: Exception) {}
-                        try { val r = apiService.getEpgTable(profile.username, profile.password); if (r.isSuccessful) ep = r.body()?.listings } catch (e: Exception) {}
+                        val chJob = async { try { apiService.getLiveStreams(profile.username, profile.password).body() ?: emptyList() } catch (e: Exception) { emptyList() } }
+                        val mvJob = async { try { apiService.getVodStreams(profile.username, profile.password).body() ?: emptyList() } catch (e: Exception) { emptyList() } }
+                        val srJob = async { try { apiService.getSeries(profile.username, profile.password).body() ?: emptyList() } catch (e: Exception) { emptyList() } }
+                        val epJob = async { try { apiService.getEpgTable(profile.username, profile.password).body()?.listings } catch (e: Exception) { null } }
+
+                        ch = chJob.await()
+                        mv = mvJob.await()
+                        sr = srJob.await()
+                        ep = epJob.await()
+
                         ContentCache.update(profile.id, ch, mv, sr, ep)
                     }
-                    Quadruple(ch, mv, sr, ep)
+                    // Artık 6 veri döndürüyoruz (Quintuple yetmez, Hexa lazım ama özel sınıf yazmak yerine aşağıda çözelim)
+                    // Basitlik için bir data class tanımlayalım dosyanın altında
+                    DataPackage(ch, mv, sr, ep, userHist, userFavs)
                 }
 
-                // 2. İŞLEME VE AI ALGORİTMASI (Burası Geliştirildi)
-                val (todayMatches, latestItems, recommendedItems) = withContext(Dispatchers.Default) {
-                    val safeChannels = channels.filter { isSafeContent(it.name) }
-                    val safeMovies = movies.filter { isSafeContent(it.name) }
-                    val safeSeries = series.filter { isSafeContent(it.name) }
+                // 2. İŞLEME
+                val (continueWatching, latestItems, recommendedItems) = withContext(Dispatchers.Default) {
 
-                    // A. MAÇLAR (Aynı)
-                    val matches = if (!epgList.isNullOrEmpty()) {
-                        safeChannels.mapNotNull { ch ->
-                            val ep = epgList.find { it.epgId == ch.streamId.toString() }
-                            if (ep != null) {
-                                val t = ep.title.lowercase(); val isMatch = t.contains(" vs ") || t.contains(" - ") || t.contains("maçı")
-                                if (isMatch) ChannelWithEpg(ch, ep) else null
-                            } else null
-                        }.take(20)
-                    } else emptyList()
+                    // A. DEVAM ET
+                    val unfinished = history.filter { !it.isFinished && it.lastPosition > 0 }
+                        .sortedByDescending { it.timestamp }.take(10)
+                    val continueList = ArrayList<ChannelWithEpg>()
+                    val movieMap = movies.associateBy { it.streamId }
+                    val seriesMap = series.associateBy { it.seriesId }
 
-                    // B. SON EKLENENLER (Aynı)
-                    val newMovies = safeMovies.sortedByDescending { it.streamId }.take(10)
-                    val newSeries = safeSeries.sortedByDescending { it.seriesId }.take(5)
-                    val latest = mutableListOf<ChannelWithEpg>()
-                    newMovies.forEach { m -> latest.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
-                    newSeries.forEach { s -> latest.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", getString(R.string.type_series), "", "", ""))) }
-
-                    // C. AI TABANLI ÖNERİLER (YENİ ALGORİTMA)
-                    val recs = mutableListOf<ChannelWithEpg>()
-
-                    // Adım 1: Veritabanından Kullanıcının "Favori Türünü" öğren
-                    // NOT: UI thread dışında (Default dispatcher) olduğumuz için direkt DAO çağırabiliriz
-                    val topMovieCatList = db.interactionDao().getTopCategoryForType("vod")
-                    val topSeriesCatList = db.interactionDao().getTopCategoryForType("series")
-
-                    val topMovieCatId = if (topMovieCatList.isNotEmpty()) topMovieCatList[0].categoryId else null
-                    val topSeriesCatId = if (topSeriesCatList.isNotEmpty()) topSeriesCatList[0].categoryId else null
-
-                    // Adım 2: Buna göre içerik seç
-                    val smartMovies = if (topMovieCatId != null) {
-                        // Kullanıcı en çok bu kategoriyi izlemiş, buradan seç
-                        safeMovies.filter { it.categoryId == topMovieCatId }.shuffled().take(10)
-                    } else {
-                        // Veri yoksa rastgele al
-                        safeMovies.shuffled().take(5)
+                    unfinished.forEach { item ->
+                        if (item.streamType == "vod") movieMap[item.streamId]?.let { m -> continueList.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), null)) }
+                        else if (item.streamType == "series") seriesMap[item.streamId]?.let { s -> continueList.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), null)) }
                     }
 
-                    val smartSeries = if (topSeriesCatId != null) {
-                        safeSeries.filter { it.categoryId == topSeriesCatId }.shuffled().take(5)
-                    } else {
-                        safeSeries.shuffled().take(3)
-                    }
+                    // B. SON EKLENENLER
+                    val safeMovies = movies.filter { !com.bybora.smartxtream.utils.RecommendationEngine.isAdultContent(it.name) }
+                    val safeSeries = series.filter { !com.bybora.smartxtream.utils.RecommendationEngine.isAdultContent(it.name) }
 
-                    // Adım 3: Listeyi oluştur
+                    val sortedMovies = safeMovies.sortedByDescending { it.added?.toLongOrNull() ?: 0L }.take(10)
+                    val sortedSeries = safeSeries.sortedByDescending { it.lastModified?.toLongOrNull() ?: 0L }.take(5)
+
+                    val latest = ArrayList<ChannelWithEpg>()
+                    sortedMovies.forEach { m -> latest.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
+                    sortedSeries.forEach { s -> latest.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", getString(R.string.type_series), "", "", ""))) }
+
+                    // C. YAPAY ZEKA (FAVORİ DESTEKLİ)
+                    val excludedIds = (sortedMovies.map { it.streamId } + sortedSeries.map { it.seriesId }).toSet()
+                    val topMovieCat = try { db.interactionDao().getTopCategoryForType("vod").firstOrNull()?.categoryId } catch (e: Exception) { null }
+                    val topSeriesCat = try { db.interactionDao().getTopCategoryForType("series").firstOrNull()?.categoryId } catch (e: Exception) { null }
+
+                    // --- DEĞİŞİKLİK: 'favorites' PARAMETRESİNİ VERİYORUZ ---
+                    val smartMovies = com.bybora.smartxtream.utils.RecommendationEngine.recommendMovies(safeMovies, history, favorites, topMovieCat, excludedIds)
+                    val smartSeries = com.bybora.smartxtream.utils.RecommendationEngine.recommendSeries(safeSeries, history, favorites, topSeriesCat, excludedIds)
+
+                    val recs = ArrayList<ChannelWithEpg>()
                     smartMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
                     smartSeries.forEach { s -> recs.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", getString(R.string.type_series), "", "", ""))) }
 
-                    // Eğer AI yeterince veri bulamadıysa listeyi popülerlerle tamamla
-                    if (recs.size < 5) {
-                        val trendingMovies = safeMovies.take(10)
-                        trendingMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
+                    if (recs.isEmpty()) {
+                        safeMovies.shuffled().take(8).filter { it.streamId !in excludedIds }.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), null)) }
                     }
 
-                    // EPG ile birleştir (Görsel düzenleme için)
-                    val finalRecs = if (recs.isNotEmpty()) {
-                        val combined = combineChannelsAndEpg(recs.map { it.channel }, epgList)
-                        combined.mapIndexed { index, item ->
-                            if (recs[index].epgNow?.title == getString(R.string.type_movie) || recs[index].epgNow?.title == getString(R.string.type_series)) item.copy(epgNow = recs[index].epgNow) else item
-                        }
-                    } else emptyList()
-
-                    Triple(matches, latest, finalRecs)
+                    Triple(continueList, latest, recs)
                 }
 
-                // UI GÜNCELLEME (Aynı)
-                if (todayMatches.isNotEmpty()) {
-                    matchAdapter.submitList(todayMatches)
-                    titleMatches.visibility = View.VISIBLE; recyclerMatches.visibility = View.VISIBLE
-                } else {
-                    titleMatches.visibility = View.GONE; recyclerMatches.visibility = View.GONE
-                }
-
-                if (latestItems.isNotEmpty()) {
-                    latestAdapter.submitList(latestItems)
-                    titleLatest.visibility = View.VISIBLE; recyclerLatest.visibility = View.VISIBLE
-                } else {
-                    titleLatest.visibility = View.GONE; recyclerLatest.visibility = View.GONE
-                }
-
+                // 3. EKRANA BAS
+                if (continueWatching.isNotEmpty()) { matchAdapter.submitList(continueWatching); titleMatches.text = getString(R.string.header_continue_watching); titleMatches.visibility = View.VISIBLE; recyclerMatches.visibility = View.VISIBLE } else { titleMatches.visibility = View.GONE; recyclerMatches.visibility = View.GONE }
+                if (latestItems.isNotEmpty()) { latestAdapter.submitList(latestItems); titleLatest.visibility = View.VISIBLE; recyclerLatest.visibility = View.VISIBLE } else { titleLatest.visibility = View.GONE; recyclerLatest.visibility = View.GONE }
                 if (recommendedItems.isNotEmpty()) {
-                    // Başlığı dinamik yapabiliriz: "Sizin İçin Seçtiklerimiz"
-                    titleRecommendations.setText(R.string.header_recommendations)
+                    val titleRes = if (history.isNotEmpty() || favorites.isNotEmpty()) R.string.header_recommendations_personal else R.string.header_recommendations
+                    titleRecommendations.setText(titleRes)
                     recAdapter.submitList(recommendedItems)
                     titleRecommendations.visibility = View.VISIBLE; recyclerRecommendations.visibility = View.VISIBLE
-                } else {
-                    titleRecommendations.visibility = View.GONE; recyclerRecommendations.visibility = View.GONE
-                }
+                } else { titleRecommendations.visibility = View.GONE; recyclerRecommendations.visibility = View.GONE }
 
                 progressBar.visibility = View.GONE
 
             } catch (e: Exception) {
                 progressBar.visibility = View.GONE
                 textConnectionStatus.setText(R.string.text_server_error)
+                e.printStackTrace()
             }
         }
     }
+
+    // MainActivity'nin en altına, eski Quintuple yerine bunu ekle:
+    data class DataPackage(
+        val channels: List<LiveStream>,
+        val movies: List<VodStream>,
+        val series: List<SeriesStream>,
+        val epg: List<EpgListing>?,
+        val history: List<Interaction>,
+        val favorites: List<Favorite>
+    )
+
+    // 6 veriyi aynı anda taşımak için yardımcı sınıf
+    data class Sextuple<A, B, C, D, E, F>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E, val sixth: F)
 
     data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
@@ -648,3 +655,11 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         return lastMatch?.value?.toIntOrNull() ?: 0
     }
 }
+// Veri taşıyıcı sınıf (5'li paket)
+data class Quintuple<A, B, C, D, E>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D,
+    val fifth: E
+)

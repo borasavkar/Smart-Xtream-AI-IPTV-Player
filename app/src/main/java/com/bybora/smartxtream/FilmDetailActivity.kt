@@ -38,6 +38,7 @@ class FilmDetailActivity : BaseActivity() {
     private var password: String? = null
     private var streamId: Int = -1
     private var currentExtension: String = "mp4"
+    private var directSource: String? = null
 
     // DB
     private val db by lazy { AppDatabase.getInstance(this) }
@@ -103,6 +104,7 @@ class FilmDetailActivity : BaseActivity() {
                     currentMovieName = info?.name ?: getString(R.string.film_name)
                     currentMovieImage = info?.image ?: ""
                     currentExtension = movieData?.extension ?: "mp4"
+                    directSource = movieData?.directSource
 
                     // --- DÜZELTME BAŞLANGICI: Strings.xml kullanımı ---
                     textTitle.text = currentMovieName
@@ -126,8 +128,8 @@ class FilmDetailActivity : BaseActivity() {
                     // --- DÜZELTME BİTİŞİ ---
 
                     if (!info?.image.isNullOrEmpty()) {
-                        Glide.with(this@FilmDetailActivity).load(info?.image).into(imgPoster)
-                        Glide.with(this@FilmDetailActivity).load(info?.image).into(imgBackdrop)
+                        Glide.with(this@FilmDetailActivity).load(info.image).into(imgPoster)
+                        Glide.with(this@FilmDetailActivity).load(info.image).into(imgBackdrop)
                     }
 
                     categoryId = movieData?.categoryId ?: "0"
@@ -153,6 +155,7 @@ class FilmDetailActivity : BaseActivity() {
             putExtra("EXTRA_STREAM_NAME", currentMovieName)
             putExtra("EXTRA_STREAM_ICON", currentMovieImage)
             putExtra("EXTRA_EXTENSION", currentExtension)
+            if (directSource != null) putExtra("EXTRA_DIRECT_URL", directSource)
         }
         startActivity(intent)
     }

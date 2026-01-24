@@ -238,4 +238,9 @@
     <string name="msg_conn_error_temp">خطأ في الاتصال: وصول مؤقت</string>
     <string name="msg_server_error_offline">تعذر الاتصال بالخادم (وضع غير متصل)</string>
     <string name="trial_status_msg">تجربة: باقي %d أيام</string>
+    <string name="header_recommendations_personal">مختارات لك</string>
+    <string name="header_continue_watching">متابعة المشاهدة</string>
+    <string name="sample_category_name">القنوات الوطنية</string>
+    <string name="sample_category_count">(١٢٤)</string>
+    <string name="sample_current_program">الآن: الأخبار</string>
 </resources>

@@ -8,7 +8,7 @@
     <string name="btn_trailer">FRAGMAN</string>
     <string name="btn_back">Geri</string>
     <string name="btn_save">Profili Kaydet</string>
-    <string name="btn_add_new">Yeni Ekle</string>
+    <string name="btn_add_new">Profil Ekle</string>
     <string name="btn_manage">Yönet</string>
     <string name="btn_edit">Düzenle</string>
     <string name="btn_delete">Sil</string>
@@ -237,4 +237,10 @@
     <string name="msg_conn_error_temp">Bağlantı Hatası: Geçici Erişim</string>
     <string name="msg_server_error_offline">Sunucuya Bağlanılamadı (Çevrimdışı Mod)</string>
     <string name="trial_status_msg">Deneme: %d Gün Kaldı</string>
+    <string name="header_recommendations_personal">Sizin İçin Seçtiklerimiz</string>
+    <string name="header_continue_watching">İzlemeye Devam Et</string>
+    <string name="sample_category_name">Ulusal Kanallar</string>
+    <string name="sample_category_count">(124)</string>
+    <string name="sample_current_program">Şu an: Haberler</string>
+    <string name="fmt_category_count" translatable="false">(%d)</string>
 </resources>

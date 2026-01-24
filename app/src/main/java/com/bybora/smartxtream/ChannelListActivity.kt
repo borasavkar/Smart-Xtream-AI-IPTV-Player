@@ -22,7 +22,11 @@ import java.util.Locale
 import java.util.TimeZone
 
 class ChannelListActivity : BaseActivity(), OnChannelClickListener {
-
+    // 1. Formatlayıcıyı buraya, sınıf seviyesine (veya companion object'e) alıyoruz.
+    // Locale.US kullanmak, cihaz dili değişse bile API formatının bozulmamasını garantiler.
+    private val epgDateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
     private lateinit var recyclerViewChannels: RecyclerView
     private lateinit var progressBar: ProgressBar
 

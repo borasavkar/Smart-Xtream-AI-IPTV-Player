@@ -238,4 +238,9 @@
     <string name="msg_conn_error_temp">Error de conexión: Acceso temporal</string>
     <string name="msg_server_error_offline">No se puede conectar al servidor (Modo sin conexión)</string>
     <string name="trial_status_msg">Prueba: quedan %d días</string>
+    <string name="header_recommendations_personal">Seleccionado para ti</string>
+    <string name="header_continue_watching">Continuar viendo</string>
+    <string name="sample_category_name">Canales Nacionales</string>
+    <string name="sample_category_count">(124)</string>
+    <string name="sample_current_program">Ahora: Noticias</string>
 </resources>

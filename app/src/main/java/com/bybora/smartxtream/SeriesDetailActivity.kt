@@ -196,6 +196,9 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
             putExtra("EXTRA_EXTENSION", episode.fileExtension ?: "mp4")
             putExtra("EXTRA_CATEGORY_ID", "0")
             putIntegerArrayListExtra("EXTRA_EPISODE_LIST", episodeIds)
+            if (episode.directSource != null) {
+                putExtra("EXTRA_DIRECT_URL", episode.directSource)
+            }
         }
         startActivity(intent)
     }

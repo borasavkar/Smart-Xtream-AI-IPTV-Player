@@ -6,7 +6,8 @@
     android:layout_height="match_parent"
     android:background="@drawable/bg_main_gradient"
     android:orientation="horizontal"
-    android:padding="24dp">
+    android:padding="24dp"
+    android:baselineAligned="false">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="0dp"

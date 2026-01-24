@@ -2,12 +2,14 @@ package com.bybora.smartxtream.utils
 
 import android.app.Activity
 import android.content.Context
+import android.util.Log
 import com.android.billingclient.api.*
 import com.android.billingclient.api.BillingClient.ProductType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class BillingManager(private val context: Context) {
+// DÜZELTME 1: 'private val' kaldırıldı. Context sadece kurulumda lazım.
+class BillingManager(context: Context) {
 
     private val _isPremium = MutableStateFlow(false)
     val isPremium = _isPremium.asStateFlow()
@@ -16,23 +18,29 @@ class BillingManager(private val context: Context) {
         const val SUB_MONTHLY = "sub_monthly"
         const val SUB_YEARLY = "sub_yearly"
         const val LIFETIME = "lifetime_premium"
+        private const val TAG = "BillingManager"
     }
 
     private val purchasesUpdatedListener = PurchasesUpdatedListener { billingResult, purchases ->
-        if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
-            for (purchase in purchases) {
-                handlePurchase(purchase)
+        // DÜZELTME 5: 'if-else' zinciri yerine 'when' yapısı
+        when (billingResult.responseCode) {
+            BillingClient.BillingResponseCode.OK -> {
+                purchases?.forEach { purchase ->
+                    handlePurchase(purchase)
+                }
             }
-        } else if (billingResult.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
-            // Kullanıcı iptal etti
-        } else {
-            // Hata
+            BillingClient.BillingResponseCode.USER_CANCELED -> {
+                Log.d(TAG, "Kullanıcı satın alma işlemini iptal etti.")
+            }
+            else -> {
+                Log.e(TAG, "Satın alma hatası: Kod=${billingResult.responseCode}, Mesaj=${billingResult.debugMessage}")
+            }
         }
     }
 
     private val billingClient = BillingClient.newBuilder(context)
         .setListener(purchasesUpdatedListener)
-        .enablePendingPurchases()
+        // DÜZELTME 2: enablePendingPurchases() silindi (Deprecated)
         .build()
 
     fun startConnection() {
@@ -42,27 +50,31 @@ class BillingManager(private val context: Context) {
                     checkActivePurchases()
                 }
             }
+
             override fun onBillingServiceDisconnected() {
-                // Bağlantı koptu
+                // Bağlantı koptu, gerekirse tekrar dene mekanizması eklenebilir
+                Log.e(TAG, "Billing servisi bağlantısı koptu.")
             }
         })
     }
 
     private fun checkActivePurchases() {
+        // DÜZELTME 3: Kullanılmayan 'isSubFound' değişkeni silindi.
+
         // 1. Abonelikleri Kontrol Et
         billingClient.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder().setProductType(ProductType.SUBS).build()
         ) { _, purchases ->
             if (purchases.isNotEmpty()) {
                 _isPremium.value = true
-            } else {
-                // 2. Abonelik yoksa, Tek Seferlik (Ömür Boyu) satın almayı kontrol et
-                billingClient.queryPurchasesAsync(
-                    QueryPurchasesParams.newBuilder().setProductType(ProductType.INAPP).build()
-                ) { _, inAppPurchases ->
-                    if (inAppPurchases.isNotEmpty()) {
-                        _isPremium.value = true
-                    }
+            }
+
+            // 2. IN-APP (Ömür Boyu) Kontrolü
+            billingClient.queryPurchasesAsync(
+                QueryPurchasesParams.newBuilder().setProductType(ProductType.INAPP).build()
+            ) { _, inAppPurchases ->
+                if (inAppPurchases.isNotEmpty()) {
+                    _isPremium.value = true
                 }
             }
         }
@@ -85,7 +97,6 @@ class BillingManager(private val context: Context) {
         }
     }
 
-    // --- KRİTİK DÜZELTME: SORGULARI AYIRIYORUZ ---
     fun queryProductDetails(onDetailsLoaded: (List<ProductDetails>) -> Unit) {
         val combinedList = mutableListOf<ProductDetails>()
 
@@ -104,9 +115,9 @@ class BillingManager(private val context: Context) {
         val subsParams = QueryProductDetailsParams.newBuilder().setProductList(subsList).build()
 
         billingClient.queryProductDetailsAsync(subsParams) { resultSubs, listSubs ->
-            // Abonelik sonuçlarını listeye ekle
             if (resultSubs.responseCode == BillingClient.BillingResponseCode.OK) {
-                listSubs?.let { combinedList.addAll(it) }
+                // DÜZELTME 4: Gereksiz '?.' (safe call) kaldırıldı
+                listSubs.let { combinedList.addAll(it) }
             }
 
             // 2. Grup: Tek Seferlik (INAPP) - Ömür Boyu
@@ -119,13 +130,11 @@ class BillingManager(private val context: Context) {
 
             val inAppParams = QueryProductDetailsParams.newBuilder().setProductList(inAppList).build()
 
-            // Şimdi bunu soruyoruz
             billingClient.queryProductDetailsAsync(inAppParams) { resultInApp, listInApp ->
                 if (resultInApp.responseCode == BillingClient.BillingResponseCode.OK) {
-                    listInApp?.let { combinedList.addAll(it) }
+                    // DÜZELTME 4: Burada da kaldırıldı
+                    listInApp.let { combinedList.addAll(it) }
                 }
-
-                // Hepsini birleştirip ekrana gönderiyoruz
                 onDetailsLoaded(combinedList)
             }
         }
@@ -135,13 +144,11 @@ class BillingManager(private val context: Context) {
         val offerToken = productDetails.subscriptionOfferDetails?.firstOrNull()?.offerToken
 
         val productParams = if (offerToken != null) {
-            // Abonelik ise offerToken gerekir
             BillingFlowParams.ProductDetailsParams.newBuilder()
                 .setProductDetails(productDetails)
                 .setOfferToken(offerToken)
                 .build()
         } else {
-            // Tek seferlik ise gerekmez
             BillingFlowParams.ProductDetailsParams.newBuilder()
                 .setProductDetails(productDetails)
                 .build()

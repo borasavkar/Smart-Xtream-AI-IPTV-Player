@@ -116,6 +116,9 @@ class PlayerActivity : BaseActivity() {
                 result.data?.data?.let { uri -> addExternalSubtitle(uri) }
             }
         }
+    private lateinit var textOverlayClock: TextView
+    private val clockHandler = Handler(Looper.getMainLooper())
+    private lateinit var clockRunnable: Runnable
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -134,19 +137,24 @@ class PlayerActivity : BaseActivity() {
             finish()
         }
 
+        // EKRAN MODU BAŞLANGIÇ KONTROLÜ
         if (isTvDevice()) {
-            // TV CİHAZI:
-            // 1. Sistem çubuklarını gizle (daha temiz görüntü için)
             hideSystemUI()
-            // 2. Aspect Ratio'yu KİLİTLE (Asla bozulmasın)
-            playerView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
         } else {
-            // MOBİL CİHAZ:
-            // Başlangıçta yan mı tutuluyor dik mi kontrol et ve ona göre şekil al
             val orientation = resources.configuration.orientation
             adjustFullScreen(orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
         }
     }
+    override fun onResume() {
+        super.onResume()
+        startClockUpdate() // Uygulama ekrana gelince saati başlat
+    }
+
+    override fun onPause() {
+        super.onPause()
+        stopClockUpdate() // Uygulama alta atılınca saati durdur
+    }
+
     private fun initViews() {
         playerView = findViewById(R.id.player_view)
         try { topControls = findViewById(R.id.top_controls) } catch (_: Exception) {}
@@ -163,6 +171,7 @@ class PlayerActivity : BaseActivity() {
         btnSubtitle.setOnClickListener { showSubtitleDialog() }
         btnFavoritePlayer.setOnClickListener { toggleFavorite() }
         btnNextEpisode.setOnClickListener { playNextEpisode() }
+        textOverlayClock = findViewById(R.id.text_overlay_clock)
 
         playerView?.setControllerVisibilityListener(object : PlayerView.ControllerVisibilityListener {
             override fun onVisibilityChanged(visibility: Int) {
@@ -170,6 +179,7 @@ class PlayerActivity : BaseActivity() {
                 btnBack.visibility = visibility
                 textNetworkSpeed.visibility = visibility
                 textResolution.visibility = visibility
+                textOverlayClock.visibility = visibility
 
                 if (topControls == null) {
                     btnSettings.visibility = visibility
@@ -232,10 +242,55 @@ class PlayerActivity : BaseActivity() {
         }
     }
 
+    // ============================================================
+    // SON GAZ BUFFER YÖNETİMİ (High Performance)
+    // ============================================================
+    private fun createDynamicLoadControl(): DefaultLoadControl {
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val memoryInfo = android.app.ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memoryInfo)
+
+        val totalRam = memoryInfo.totalMem / (1024 * 1024)
+
+        // RAM: 3GB üstü cihazlarda geniş alan, diğerlerinde standart.
+        val targetBufferBytes = if (totalRam > 2800) {
+            200 * 1024 * 1024 // 200 MB (Yeterli ve güvenli)
+        } else {
+            80 * 1024 * 1024  // 80 MB (Ekonomik)
+        }
+
+        // Standart Bloklar (En uyumlu)
+        val allocator = androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
+
+        val builder = DefaultLoadControl.Builder()
+            .setAllocator(allocator)
+            .setTargetBufferBytes(targetBufferBytes)
+            .setPrioritizeTimeOverSizeThresholds(true)
+
+        if (streamType == "live") {
+            builder.setBufferDurationsMs(
+                30_000, // Min: 30sn
+                120_000, // Max: 2dk
+                4_000,   // Start: 4sn (2.5 yerine 4 yaptık -> İlk takılmayı önler)
+                8_000    // Re-buffer: 8sn
+            )
+        } else {
+            builder.setBufferDurationsMs(
+                50_000,
+                180_000,
+                3_000,
+                5_000
+            )
+            builder.setBackBuffer(20_000, true)
+        }
+
+        return builder.build()
+    }
+
     private fun initializePlayer() {
         if (player == null) {
             try {
-                // --- URL HAZIRLAMA ---
+                // URL Hazırlama (Aynı)
                 val finalUrl = if (directUrl != null) {
                     directUrl!!
                 } else {
@@ -254,162 +309,93 @@ class PlayerActivity : BaseActivity() {
                     }
                 }
 
-                // ============================================================
-                // 1. İSİM ANALİZİ: BU KANAL 4K MI? (AKILLI AYRIM)
-                // ============================================================
-                // Kanalın adında "4K", "UHD" veya "2160" geçiyorsa 4K olarak işaretle.
-                val isLikely4K = streamName.contains("4K", ignoreCase = true) ||
-                        streamName.contains("UHD", ignoreCase = true) ||
-                        streamName.contains("2160", ignoreCase = true)
+                // 1. BANDWIDTH METER (AKILLI BAŞLANGIÇ)
+                // 40 Mbps yalanını bırakıp "15 Mbps" diyoruz.
+                // Bu sayede Player "Boğulmadan" başlar, sonra vites yükseltir.
+                val bandwidthMeter = androidx.media3.exoplayer.upstream.DefaultBandwidthMeter.Builder(this)
+                    .setInitialBitrateEstimate(15_000_000)
+                    .build()
 
-                // ============================================================
-                // 2. TRACK SELECTOR VE TÜNELLEME
-                // ============================================================
+                // 2. TRACK SELECTOR
                 trackSelector = DefaultTrackSelector(this)
-                val (maxWidth, maxHeight) = getMaxSupportedResolution()
-                val (isWifi, isFastConnection) = getNetworkInfo()
-                val isTv = isTvDevice()
-
                 val parametersBuilder = trackSelector!!.buildUponParameters()
+                parametersBuilder.setMaxVideoBitrate(Int.MAX_VALUE)
+                parametersBuilder.setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE)
 
-                // TV ise Tünelleme AÇ
-                if (isTv) {
+                if (isTvDevice() && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                     parametersBuilder.setTunnelingEnabled(true)
-                } else {
-                    parametersBuilder.setTunnelingEnabled(false)
                 }
 
-                // İnternet Hızına Göre Limitler
-                when {
-                    !isWifi && !isFastConnection -> {
-                        parametersBuilder.setMaxVideoSize(1280, 720)
-                        parametersBuilder.setMaxVideoBitrate(5_000_000)
-                    }
-                    !isWifi -> {
-                        parametersBuilder.setMaxVideoSize(1920, 1080)
-                        parametersBuilder.setMaxVideoBitrate(12_000_000)
-                    }
-                    isFastConnection -> {
-                        parametersBuilder.setMaxVideoSize(maxWidth, maxHeight)
-                        parametersBuilder.setMaxVideoBitrate(Int.MAX_VALUE)
-                    }
-                    else -> {
-                        parametersBuilder.setMaxVideoSize(1920, 1080)
-                        parametersBuilder.setMaxVideoBitrate(15_000_000)
-                    }
-                }
-                parametersBuilder.setPreferredVideoMimeTypes(MimeTypes.VIDEO_H265, MimeTypes.VIDEO_H264)
                 applyGlobalSettings(trackSelector!!)
                 trackSelector?.parameters = parametersBuilder.build()
 
-
-                // ============================================================
-                // 3. NETWORK (SAĞLAM BAĞLANTI)
-                // ============================================================
-                val baseClient: OkHttpClient = RetrofitClient.okHttpClient
-                val okHttpClient = baseClient.newBuilder()
-                    .connectionPool(okhttp3.ConnectionPool(5, 5, TimeUnit.MINUTES))
-                    .connectTimeout(60, TimeUnit.SECONDS)
-                    .readTimeout(60, TimeUnit.SECONDS)
-                    .writeTimeout(60, TimeUnit.SECONDS)
-                    .followRedirects(true)
-                    .followSslRedirects(true)
+                // 3. NETWORK
+                val okHttpClient = OkHttpClient.Builder()
+                    .connectTimeout(20, TimeUnit.SECONDS)
+                    .readTimeout(20, TimeUnit.SECONDS)
                     .retryOnConnectionFailure(true)
+                    .connectionPool(okhttp3.ConnectionPool(5, 5, TimeUnit.MINUTES))
                     .build()
 
-                val userAgent = "IPTVSmartersPro"
-                val okHttpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient).setUserAgent(userAgent)
-                val dataSourceFactory: DataSource.Factory = if (streamType != "live") setupCache(this, okHttpDataSourceFactory) else okHttpDataSourceFactory
+                val dataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
+                    .setUserAgent("IPTVSmartersPro")
 
+                val finalDataSourceFactory: DataSource.Factory = if (streamType != "live") {
+                    setupCache(this, dataSourceFactory)
+                } else {
+                    dataSourceFactory
+                }
 
-                // ============================================================
-                // 4. VLC MODU (KİRLİ SİNYAL İZNİ)
-                // ============================================================
+                // 4. LOAD CONTROL
+                val loadControl = createDynamicLoadControl()
+
+                // 5. MEDIA SOURCE
                 val extractorsFactory = DefaultExtractorsFactory()
                     .setTsExtractorFlags(
                         DefaultTsPayloadReaderFactory.FLAG_ALLOW_NON_IDR_KEYFRAMES or
                                 DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS
                     )
 
-
-                // ============================================================
-                // 5. LOAD CONTROL (TAMPON YÖNETİMİ)
-                // ============================================================
-                val loadControl = if (streamType == "live") {
-                    // 4K olsa da FHD olsa da depomuz büyük olsun (200MB), zarar gelmez.
-                    DefaultLoadControl.Builder()
-                        .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE))
-                        .setBufferDurationsMs(
-                            15000,  // Min: 15 saniye
-                            60000,  // Max: 60 saniye
-                            2500,   // Start: 2.5 saniye
-                            10000   // Rebuffer
-                        )
-                        .setTargetBufferBytes(200 * 1024 * 1024)
-                        .setPrioritizeTimeOverSizeThresholds(true)
-                        .build()
-                } else {
-                    // VOD
-                    DefaultLoadControl.Builder()
-                        .setAllocator(androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE * 2))
-                        .setBufferDurationsMs(15000, 120000, 2500, 5000)
-                        .setTargetBufferBytes(130 * 1024 * 1024)
-                        .setPrioritizeTimeOverSizeThresholds(true)
-                        .setBackBuffer(0, false)
-                        .build()
-                }
-
-
-                // ============================================================
-                // 6. MEDIA SOURCE (DİNAMİK GECİKME AYARI)
-                // ============================================================
-
-                // Eğer kanal adında "4K/UHD" varsa 30sn gecikme ver (Güvenli).
-                // Yoksa 12sn gecikme ver (Hızlı/Maç Modu).
-                val targetLatency = if (isLikely4K) 30000L else 12000L
-
-                val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory, extractorsFactory)
-                    .setLiveTargetOffsetMs(targetLatency)
+                val mediaSourceFactory = DefaultMediaSourceFactory(finalDataSourceFactory, extractorsFactory)
                     .setLoadErrorHandlingPolicy(object : androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy() {
                         override fun getRetryDelayMsFor(loadErrorInfo: androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy.LoadErrorInfo): Long { return 1000 }
-                        override fun getMinimumLoadableRetryCount(dataType: Int): Int { return 10 }
+                        override fun getMinimumLoadableRetryCount(dataType: Int): Int { return 5 }
                     })
 
-
-                // ============================================================
-                // 7. PLAYER BUILD
-                // ============================================================
+                // 6. RENDERER
                 val renderersFactory = DefaultRenderersFactory(this)
                     .setEnableDecoderFallback(true)
-                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
-                    .setAllowedVideoJoiningTimeMs(10000)
+                    .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
 
+                // 7. PLAYER
                 player = ExoPlayer.Builder(this, renderersFactory)
                     .setMediaSourceFactory(mediaSourceFactory)
                     .setTrackSelector(trackSelector!!)
                     .setLoadControl(loadControl)
-                    .setAudioAttributes(
-                        androidx.media3.common.AudioAttributes.Builder()
-                            .setUsage(C.USAGE_MEDIA)
-                            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-                            .build(),
-                        true
-                    )
-                    .setDeviceVolumeControlEnabled(true)
+                    .setBandwidthMeter(bandwidthMeter)
                     .setHandleAudioBecomingNoisy(true)
                     .setWakeMode(C.WAKE_MODE_NETWORK)
+                    .setSeekBackIncrementMs(10000)
+                    .setSeekForwardIncrementMs(10000)
                     .build()
 
                 playerView?.player = player
                 playerView?.keepScreenOn = true
+
                 val mediaItem = MediaItem.fromUri(finalUrl)
                 player?.setMediaItem(mediaItem)
+
                 if (startPosition > 0) player?.seekTo(startPosition)
 
+                // Listener'lar
                 player?.addListener(object : androidx.media3.common.Player.Listener {
                     override fun onPlayerError(error: PlaybackException) { handlePlayerError(error) }
-                    override fun onIsPlayingChanged(isPlaying: Boolean) { if (isPlaying) handler.post(progressRunnable) else handler.removeCallbacks(progressRunnable) }
-                    override fun onPlaybackStateChanged(playbackState: Int) { if (playbackState == androidx.media3.common.Player.STATE_READY) smartSelectSubtitle() }
+                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        if (isPlaying) handler.post(progressRunnable) else handler.removeCallbacks(progressRunnable)
+                    }
+                    override fun onPlaybackStateChanged(state: Int) {
+                        if (state == androidx.media3.common.Player.STATE_READY) smartSelectSubtitle()
+                    }
                 })
 
                 player?.prepare()
@@ -426,13 +412,12 @@ class PlayerActivity : BaseActivity() {
                 })
 
             } catch (e: Exception) {
-                showDetailedErrorDialog(getString(R.string.title_init_error), e.message ?: getString(R.string.error_unknown))
+                showDetailedErrorDialog(getString(R.string.title_init_error), e.message ?: "")
             }
         }
     }
-
     // ============================================================
-    // YARDIMCI FONKSİYONLAR
+    // YARDIMCI FONKSİYONLAR (Aynı Kalıyor)
     // ============================================================
     private fun getNetworkInfo(): Pair<Boolean, Boolean> {
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
@@ -447,18 +432,22 @@ class PlayerActivity : BaseActivity() {
 
     private fun setupCache(context: Context, upstreamFactory: DataSource.Factory): DataSource.Factory {
         if (simpleCache == null) {
-            val evictor = LeastRecentlyUsedCacheEvictor(200 * 1024 * 1024)
+            val evictor = LeastRecentlyUsedCacheEvictor(2048L * 1024 * 1024)
             val databaseProvider = StandaloneDatabaseProvider(context)
             simpleCache = SimpleCache(File(context.cacheDir, "media"), evictor, databaseProvider)
         }
-        return CacheDataSource.Factory().setCache(simpleCache!!).setUpstreamDataSourceFactory(upstreamFactory).setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+        return CacheDataSource.Factory()
+            .setCache(simpleCache!!)
+            .setUpstreamDataSourceFactory(upstreamFactory)
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
     }
 
     private fun applyGlobalSettings(selector: DefaultTrackSelector) {
         val parametersBuilder = selector.buildUponParameters()
-        val (maxWidth, maxHeight) = getMaxSupportedResolution()
-        parametersBuilder.setMaxVideoSize(maxWidth, maxHeight)
+        // Limitsiz ayarlar
+        parametersBuilder.setMaxVideoSize(Int.MAX_VALUE, Int.MAX_VALUE)
         parametersBuilder.setMaxVideoBitrate(Int.MAX_VALUE)
+
         parametersBuilder.setAllowVideoNonSeamlessAdaptiveness(true)
         parametersBuilder.setAllowVideoMixedMimeTypeAdaptiveness(false)
         parametersBuilder.setAllowAudioMixedMimeTypeAdaptiveness(true)
@@ -470,8 +459,6 @@ class PlayerActivity : BaseActivity() {
         parametersBuilder.setSelectUndeterminedTextLanguage(true)
         selector.parameters = parametersBuilder.build()
     }
-
-    private fun canHandle4K(): Boolean { return true }
 
     private fun getMaxSupportedResolution(): Pair<Int, Int> {
         return try {
@@ -499,11 +486,22 @@ class PlayerActivity : BaseActivity() {
         if (currentRxBytes == TrafficStats.UNSUPPORTED.toLong()) return
         val currentTime = System.currentTimeMillis()
         val timeDiff = currentTime - lastTimeStamp
+
+        // Saniyede bir güncelle
         if (timeDiff >= 1000) {
             val bytesDiff = max(0L, currentRxBytes - lastTotalRxBytes)
             val currentInstantSpeed = (bytesDiff * 1000) / timeDiff
             smoothedSpeed = (smoothedSpeed * 0.6) + (currentInstantSpeed * 0.4)
-            val speedText = if (smoothedSpeed >= 1024 * 1024) String.format("%.1f MB/s", smoothedSpeed / (1024f * 1024f)) else String.format("%d KB/s", (smoothedSpeed / 1024).toLong())
+
+            // OPTİMİZASYON: String.format yerine Template kullanımı
+            val speedText = if (smoothedSpeed >= 1024 * 1024) {
+                val mb = (smoothedSpeed / (1024f * 1024f)).toInt()
+                "$mb MB/s"
+            } else {
+                val kb = (smoothedSpeed / 1024).toLong()
+                "$kb KB/s"
+            }
+
             textNetworkSpeed.text = speedText
             lastTotalRxBytes = currentRxBytes
             lastTimeStamp = currentTime
@@ -792,46 +790,30 @@ class PlayerActivity : BaseActivity() {
     override fun onStop() { super.onStop(); handler.removeCallbacks(progressRunnable); saveProgress(); player?.release(); player = null }
 
     // ============================================================
-    // EKRAN YÖNETİMİ (GÜVENLİ TAM EKRAN + ÇENTİK DESTEĞİ)
+    // EKRAN YÖNETİMİ
     // ============================================================
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
-
-        // TV ise karışma
         if (isTvDevice()) return
-
-        // Mobil ise ayarla
         adjustFullScreen(newConfig.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
     }
 
     private fun adjustFullScreen(isLandscape: Boolean) {
         if (isLandscape) {
-            // --- MOBİL YATAY MOD ---
             hideSystemUI()
-
-            // 1. ÇENTİK (NOTCH) KİLİDİNİ AÇ
-            // Bu kod, siyah şeridi kaldırır ve videonun kameranın yanlarına kadar gitmesini sağlar.
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 val params = window.attributes
                 params.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                 window.attributes = params
             }
-
-            // 2. GÖRÜNTÜ MODU: FIT (EN GÜVENLİSİ)
-            // Asla sündürmez, asla kesmez. Orijinal kaliteyi korur.
             playerView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-
         } else {
-            // --- MOBİL DİKEY MOD ---
             showSystemUI()
-
-            // Çentik ayarını normale döndür
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 val params = window.attributes
                 params.layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
                 window.attributes = params
             }
-
             playerView?.resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
         }
     }
@@ -852,5 +834,25 @@ class PlayerActivity : BaseActivity() {
     private fun isTvDevice(): Boolean {
         val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager
         return uiModeManager.currentModeType == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+    }
+    // ... Sınıfın en altındaki diğer kodların altına ekle ...
+
+    private fun startClockUpdate() {
+        clockRunnable = object : Runnable {
+            override fun run() {
+                val currentTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
+                if (::textOverlayClock.isInitialized) {
+                    textOverlayClock.text = currentTime
+                    // SİLİNDİ: textOverlayClock.visibility = View.VISIBLE  <-- BU SATIRI SİLİYORUZ
+                    // Artık görünürlüğe karışmıyor, sadece saati güncelliyor.
+                }
+                clockHandler.postDelayed(this, 1000)
+            }
+        }
+        clockHandler.post(clockRunnable)
+    }
+
+    private fun stopClockUpdate() {
+        clockHandler.removeCallbacks(clockRunnable)
     }
 }

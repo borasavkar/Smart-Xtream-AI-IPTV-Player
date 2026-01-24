@@ -13,8 +13,8 @@ android {
         applicationId = "com.bybora.smartxtream"
         minSdk = 24
         targetSdk = 36
-        versionCode = 24
-        versionName = "1.1.24"
+        versionCode = 32
+        versionName = "1.1.312  "
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -41,8 +41,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+}
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
 

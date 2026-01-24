@@ -52,9 +52,9 @@
             android:exported="false"
             android:supportsPictureInPicture="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize"
-            android:screenOrientation="sensor"
             android:resizeableActivity="true"
             tools:ignore="LockedOrientationActivity"
+            android:screenOrientation="fullSensor"
             android:theme="@style/Theme.smartxtream" />
         <activity
             android:name=".SubscriptionActivity"

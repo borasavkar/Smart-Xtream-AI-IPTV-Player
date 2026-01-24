@@ -237,4 +237,9 @@
     <string name="msg_conn_error_temp">Ошибка подключения: Временный доступ</string>
     <string name="msg_server_error_offline">Не удается подключиться к серверу (Офлайн-режим)</string>
     <string name="trial_status_msg">Пробно: осталось %d дн.</string>
+    <string name="header_recommendations_personal">Подборка для вас</string>
+    <string name="header_continue_watching">Продолжить просмотр</string>
+    <string name="sample_category_name">Национальные каналы</string>
+    <string name="sample_category_count">(124)</string>
+    <string name="sample_current_program">Сейчас: Новости</string>
 </resources>

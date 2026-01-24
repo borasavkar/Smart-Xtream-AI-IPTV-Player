@@ -111,6 +111,22 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/text_network_speed"
         app:layout_constraintBottom_toBottomOf="@+id/text_network_speed"/>
+    <TextView
+        android:id="@+id/text_overlay_clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_glass_3d"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        android:layout_marginEnd="16dp"
+        tools:text="20:45"
+        android:textColor="@color/white"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/text_network_speed"
+        app:layout_constraintBottom_toBottomOf="@id/text_network_speed"/>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_next_episode"

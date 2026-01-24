@@ -38,6 +38,16 @@
             android:textStyle="bold"
             android:gravity="center"
             android:layout_marginBottom="24dp"/>
+        <TextView
+            android:id="@+id/text_sub_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            tools:text="♛ PREMIUM"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="@id/text_status_profile_name"
+            app:layout_constraintTop_toBottomOf="@id/text_status_profile_name" />
 
         <include
             android:id="@+id/card_tv"

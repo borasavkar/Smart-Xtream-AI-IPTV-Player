@@ -237,4 +237,9 @@
     <string name="msg_conn_error_temp">Verbindungsfehler: Vorübergehender Zugriff</string>
     <string name="msg_server_error_offline">Keine Verbindung zum Server (Offline-Modus)</string>
     <string name="trial_status_msg">Probezeit: noch %d Tage</string>
+    <string name="header_recommendations_personal">Für dich ausgewählt</string>
+    <string name="header_continue_watching">Weiterschauen</string>
+    <string name="sample_category_name">Nationale Kanäle</string>
+    <string name="sample_category_count">(124)</string>,
+    <string name="sample_current_program">Jetzt: Nachrichten</string>
 </resources>

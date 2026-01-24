@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 
 class AddProfileActivity : BaseActivity() {
 
+    // XML ile birebir uyumlu View değişkenleri
     private lateinit var textTitle: TextView
     private lateinit var layoutProfileName: TextInputLayout
     private lateinit var editTextProfileName: TextInputEditText
@@ -37,25 +38,40 @@ class AddProfileActivity : BaseActivity() {
     private var isEditMode = false
     private var editingProfileId = -1
 
+    companion object {
+        private const val DEMO_NAME = "Demo Modu"
+        private const val DEMO_USER = "google_test"
+        // DİKKAT: MockData sunucusunun beklediği şifre (123456)
+        private const val DEMO_PASS = "123456"
+        private const val DEMO_URL = "http://google.com"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_profile)
 
-        // UI Tanımlamaları
+        // --- ID EŞLEŞTİRMELERİ (XML Dosyana Göre Kontrol Edildi) ---
         textTitle = findViewById(R.id.title)
+
         layoutProfileName = findViewById(R.id.layout_profile_name)
         editTextProfileName = findViewById(R.id.edit_text_profile_name)
+
         layoutUsername = findViewById(R.id.layout_username)
         editTextUsername = findViewById(R.id.edit_text_username)
+
         layoutPassword = findViewById(R.id.layout_password)
         editTextPassword = findViewById(R.id.edit_text_password)
+
         layoutServerUrl = findViewById(R.id.layout_server_url)
         editTextServerUrl = findViewById(R.id.edit_text_server_url)
+
         buttonSave = findViewById(R.id.button_save)
         progressBar = findViewById(R.id.progress_bar)
 
+        // Geri butonu (XML'deki ID: btn_back)
         findViewById<View>(R.id.btn_back).setOnClickListener { finish() }
 
+        // --- MANTIK KISMI ---
         if (intent.hasExtra("EXTRA_EDIT_ID")) {
             isEditMode = true
             editingProfileId = intent.getIntExtra("EXTRA_EDIT_ID", -1)
@@ -65,10 +81,33 @@ class AddProfileActivity : BaseActivity() {
         } else {
             textTitle.text = getString(R.string.title_add_profile)
             buttonSave.text = getString(R.string.btn_save)
+            setupDemoMode()
         }
 
         buttonSave.setOnClickListener {
             validateAndSaveProfile()
+        }
+    }
+
+    private fun setupDemoMode() {
+        // 1. Kutucukları Demo verilerle doldur
+        editTextProfileName.setText(DEMO_NAME)
+        editTextUsername.setText(DEMO_USER)
+        editTextPassword.setText(DEMO_PASS)
+        editTextServerUrl.setText(DEMO_URL)
+
+        // 2. Odaklanınca temizleme özelliği
+        addAutoClearListener(editTextProfileName, DEMO_NAME)
+        addAutoClearListener(editTextUsername, DEMO_USER)
+        addAutoClearListener(editTextPassword, DEMO_PASS)
+        addAutoClearListener(editTextServerUrl, DEMO_URL)
+    }
+
+    private fun addAutoClearListener(editText: TextInputEditText, defaultText: String) {
+        editText.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && editText.text.toString() == defaultText) {
+                editText.setText("")
+            }
         }
     }
 
@@ -91,6 +130,7 @@ class AddProfileActivity : BaseActivity() {
         if (profileName.isEmpty()) {
             profileName = getString(R.string.default_profile_name)
         } else {
+            // İlk harfi büyük yap
             profileName = profileName.substring(0, 1).uppercase() + profileName.substring(1)
         }
 
@@ -103,18 +143,20 @@ class AddProfileActivity : BaseActivity() {
 
         lifecycleScope.launch {
             try {
-                // API Doğrulaması (Giriş Yapılıyor...)
+                // Retrofit ile giriş denemesi
                 val apiService = RetrofitClient.createService(serverUrl)
                 val response = apiService.authenticate(username, password)
 
                 if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
-                    // Giriş Başarılı -> Veritabanına Kaydet
                     saveProfileToDb(serverUrl, profileName, username, password)
                 } else {
                     showError(getString(R.string.error_login_failed_check))
                 }
             } catch (e: Exception) {
                 Log.e("AddProfile", "Error: ${e.message}")
+                // Mock Sunucu veya Hata durumunda (Eğer demo bilgilerse yine de kaydet)
+                // NOT: Gerçek uygulamada burayı sadece showError yapmalısın.
+                // Demo testi için burayı esnetebilirsin ama şimdilik hata gösteriyoruz.
                 showError(getString(R.string.error_network_connection))
             }
         }
@@ -141,7 +183,7 @@ class AddProfileActivity : BaseActivity() {
                 showToast(R.string.msg_profile_saved)
             }
 
-            // Kayıt bitti, şimdi Ana Sayfayı temiz bir şekilde başlat
+            // Ana Sayfaya yönlendir
             val intent = Intent(this@AddProfileActivity, MainActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)

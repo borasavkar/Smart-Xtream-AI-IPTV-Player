@@ -237,4 +237,9 @@
     <string name="msg_conn_error_temp">Erreur de connexion : Accès temporaire</string>
     <string name="msg_server_error_offline">Impossible de se connecter au serveur (Mode hors ligne)</string>
     <string name="trial_status_msg">Essai : %d jours restants</string>
+    <string name="header_recommendations_personal">Sélectionné pour vous</string>
+    <string name="header_continue_watching">Continuer à regarder</string>
+    <string name="sample_category_name">Chaînes Nationales</string>
+    <string name="sample_category_count">(124)</string>
+    <string name="sample_current_program">Maintenant : Actualités</string>
 </resources>
