@@ -242,4 +242,8 @@
     <string name="sample_category_name">Национальные каналы</string>
     <string name="sample_category_count">(124)</string>
     <string name="sample_current_program">Сейчас: Новости</string>
+    <string name="title_select_profile">Выбрать профиль</string>
+    <string name="desc_close_dialog">Закрыть окно</string>
+    <string name="manage_profiles">Управление профилями</string>
+    <string name="chose_profile_to_edit">Выберите профиль для редактирования</string>
 </resources>

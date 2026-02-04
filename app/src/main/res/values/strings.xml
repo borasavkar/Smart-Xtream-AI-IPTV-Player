@@ -243,4 +243,8 @@
     <string name="sample_category_count">(124)</string>
     <string name="sample_current_program">Şu an: Haberler</string>
     <string name="fmt_category_count" translatable="false">(%d)</string>
+    <string name="title_select_profile">Profil Seçin</string>
+    <string name="desc_close_dialog">Pencereyi Kapat</string>
+    <string name="manage_profiles">Profilleri Yönet</string>
+    <string name="chose_profile_to_edit">Düzenlemek için bir profil seçin</string>
 </resources>

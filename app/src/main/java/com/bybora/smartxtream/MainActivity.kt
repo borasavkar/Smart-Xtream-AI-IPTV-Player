@@ -196,7 +196,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     ContentCache.clear()
                     clearBottomBar()
                     textStatusProfileName.setText(R.string.text_no_profile)
-                    startActivity(Intent(this@MainActivity, AddProfileActivity::class.java))
+                    showAddProfileDialog()
                 } else {
                     val savedId = SettingsManager.getSelectedProfileId(this@MainActivity)
                     val targetProfile = profiles.find { it.id == savedId } ?: profiles[0]
@@ -328,6 +328,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
 
     private fun setupClickListeners() {
         buttonAddProfile.setOnClickListener { showProfileSelectionDialog() }
+        textStatusProfileName.setOnClickListener { showAddProfileDialog() }
         btnGlobalSettings.setOnClickListener { showGlobalSettingsDialog() }
         btnFavorites.setOnClickListener {
             if(activeProfile!=null) {
@@ -594,24 +595,250 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         putExtra("EXTRA_IS_M3U", profile.isM3u)
     }
 
+// MainActivity.kt içine yapıştır (Eski showProfileSelectionDialog yerine)
+
     private fun showProfileSelectionDialog() {
-        if (allProfiles.isEmpty()) { startActivity(Intent(this, AddProfileActivity::class.java)); return }
-        val profileNames = allProfiles.map { it.profileName }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.title_add_profile))
-            .setItems(profileNames) { dialog, which -> selectProfile(allProfiles[which]); dialog.dismiss() }
-            .setPositiveButton(getString(R.string.btn_add_new)) { dialog, _ -> startActivity(Intent(this, AddProfileActivity::class.java)); dialog.dismiss() }
-            .setNeutralButton(getString(R.string.btn_manage)) { dialog, _ -> showManagementDialog() }
-            .show()
+        // Eğer hiç profil yoksa direkt Ekleme ekranını aç
+        if (allProfiles.isEmpty()) {
+            showAddProfileDialog()
+            return
+        }
+
+        // 1. Tasarımı Şişir
+        val dialogView = android.view.LayoutInflater.from(this).inflate(R.layout.dialog_profile_selection, null)
+
+        // 2. Dialog Builder
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+
+        val dialog = builder.create()
+        // CAM EFEKTİ İÇİN ARKA PLANI ŞEFFAF YAP
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        // ARKADAKİ ANA EKRANI KARART (%85)
+        dialog.window?.setDimAmount(0.85f)
+
+        dialog.show()
+
+        // 3. View Elemanlarını Bul (Dinamik Ekleme İçin)
+        val containerProfiles = dialogView.findViewById<android.widget.LinearLayout>(R.id.containerProfiles)
+        val btnAddNew = dialogView.findViewById<android.widget.Button>(R.id.btnAddNew)
+        val btnManage = dialogView.findViewById<android.widget.Button>(R.id.btnManage)
+        val btnClose = dialogView.findViewById<android.widget.ImageButton>(R.id.btnCloseDialog)
+
+        // 4. PROFIL LİSTESİNİ OLUŞTUR (Dinamik Butonlar)
+        val layoutParams = android.widget.LinearLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        layoutParams.setMargins(0, 0, 0, 16) // Butonlar arası boşluk
+
+        allProfiles.forEach { profile ->
+            val btnProfile = android.widget.Button(this)
+            btnProfile.text = profile.profileName
+            btnProfile.textSize = 16f
+            btnProfile.setTextColor(android.graphics.Color.WHITE)
+
+            // TV KUMANDASI İÇİN FOCUS AYARLARI
+            btnProfile.isFocusable = true
+
+            // Bizim hazırladığımız Neon Parlamalı Arka Planı Veriyoruz
+            // (selector_glass_button dosyasının var olduğundan eminiz)
+            btnProfile.setBackgroundResource(R.drawable.selector_glass_button)
+
+            // Şeffaflığı bozmamak için tint'i kapat
+            btnProfile.backgroundTintList = null
+
+            btnProfile.layoutParams = layoutParams
+
+            // İKON EKLEME (İsteğe bağlı: Profilin soluna küçük bir ikon)
+            val icon = androidx.core.content.ContextCompat.getDrawable(this, R.drawable.ic_heart_filled) // Kalp veya kullanıcı ikonu
+            icon?.setBounds(0, 0, 48, 48)
+            icon?.setTint(android.graphics.Color.WHITE)
+            // btnProfile.setCompoundDrawables(icon, null, null, null) // İstersen açabilirsin
+            btnProfile.compoundDrawablePadding = 24
+
+            // TIKLAMA OLAYI
+            btnProfile.setOnClickListener {
+                selectProfile(profile)
+                dialog.dismiss()
+            }
+
+            // Listeye Ekle
+            containerProfiles.addView(btnProfile)
+        }
+
+        // 5. ALT BUTONLARIN İŞLEVLERİ
+        btnAddNew.setOnClickListener {
+            dialog.dismiss()
+            showAddProfileDialog() // <-- Senin yeni cam ekleme ekranına gider
+        }
+
+        btnManage.setOnClickListener {
+            dialog.dismiss()
+            showManagementDialog() // Yönetim ekranı
+        }
+
+        btnClose.setOnClickListener {
+            dialog.dismiss()
+        }
     }
 
+    // ------------------------------------------------------------------------
+    // 1. PROFİL YÖNETİM EKRANI (LİSTE)
+    // ------------------------------------------------------------------------
     private fun showManagementDialog() {
-        val profileNames = allProfiles.map { it.profileName }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.btn_manage))
-            .setItems(profileNames) { _, which -> showActionDialog(allProfiles[which]) }
-            .setNegativeButton(getString(R.string.btn_cancel), null)
-            .show()
+        val dialogView = android.view.LayoutInflater.from(this).inflate(R.layout.dialog_profile_management, null)
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+
+        val dialog = builder.create()
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        dialog.window?.setDimAmount(0.85f) // Arka planı karart
+        dialog.show()
+
+        val container = dialogView.findViewById<android.widget.LinearLayout>(R.id.containerProfiles)
+        val btnClose = dialogView.findViewById<android.widget.ImageButton>(R.id.btnCloseDialog)
+
+        btnClose.setOnClickListener { dialog.dismiss() }
+
+        // Profilleri Listele
+        val layoutParams = android.widget.LinearLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        layoutParams.setMargins(0, 0, 0, 16)
+
+        allProfiles.forEach { profile ->
+            val btnProfile = android.widget.Button(this)
+            btnProfile.text = profile.profileName
+            btnProfile.textSize = 16f
+            btnProfile.setTextColor(android.graphics.Color.WHITE)
+            btnProfile.isFocusable = true
+
+            // Neon Parlama Efekti
+            btnProfile.setBackgroundResource(R.drawable.selector_glass_button)
+            btnProfile.backgroundTintList = null
+            btnProfile.layoutParams = layoutParams
+
+            // Kalem İkonu (Düzenle anlamına gelir)
+            val icon = androidx.core.content.ContextCompat.getDrawable(this, android.R.drawable.ic_menu_edit)
+            icon?.setTint(android.graphics.Color.WHITE)
+            icon?.setBounds(0, 0, 40, 40)
+            btnProfile.setCompoundDrawables(null, null, icon, null) // Sağ tarafa ikon koy
+            btnProfile.compoundDrawablePadding = 24
+
+            // Tıklayınca DÜZENLEME Ekranını Aç
+            btnProfile.setOnClickListener {
+                dialog.dismiss()
+                showEditProfileDialog(profile) // <--- AŞAĞIDAKİ YENİ FONKSİYONU ÇAĞIRIYOR
+            }
+            container.addView(btnProfile)
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // 2. PROFİL DÜZENLEME EKRANI (Liquid Glass)
+    // ------------------------------------------------------------------------
+    private fun showEditProfileDialog(profileToEdit: com.bybora.smartxtream.database.Profile) {
+        val dialogView = android.view.LayoutInflater.from(this).inflate(R.layout.dialog_add_profile, null)
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+
+        val dialog = builder.create()
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        dialog.window?.setDimAmount(0.85f)
+        dialog.show()
+
+        // Elemanları Bul
+        val tvTitle = dialogView.findViewById<android.widget.TextView>(R.id.tvDialogTitle)
+        val etProfileName = dialogView.findViewById<android.widget.EditText>(R.id.etProfileName)
+        val etUsername = dialogView.findViewById<android.widget.EditText>(R.id.etUsername)
+        val etPassword = dialogView.findViewById<android.widget.EditText>(R.id.etPassword)
+        val etUrl = dialogView.findViewById<android.widget.EditText>(R.id.etUrl)
+        val btnSave = dialogView.findViewById<android.widget.Button>(R.id.btnAdd)
+        val btnCancel = dialogView.findViewById<android.widget.Button>(R.id.btnCancel)
+        val btnDelete = dialogView.findViewById<android.widget.Button>(R.id.btnDelete)
+
+        // --- DÜZENLEME MODU AYARLARI ---
+        tvTitle.text = "Profili Düzenle"      // Başlığı Değiştir
+        btnSave.text = "Güncelle"             // Buton Yazısını Değiştir
+        btnDelete.visibility = android.view.View.VISIBLE // SİL Butonunu Göster
+
+        // Verileri Doldur
+        etProfileName.setText(profileToEdit.profileName)
+        etUsername.setText(profileToEdit.username)
+        etPassword.setText(profileToEdit.password)
+        etUrl.setText(profileToEdit.serverUrl)
+
+        // --- BUTON İŞLEVLERİ ---
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+
+        // SİLME İŞLEMİ
+        btnDelete.setOnClickListener {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Profili Sil")
+                .setMessage("${profileToEdit.profileName} profili silinecek. Emin misiniz?")
+                .setPositiveButton("Evet, Sil") { _, _ ->
+                    lifecycleScope.launch {
+                        val db = com.bybora.smartxtream.database.AppDatabase.getInstance(this@MainActivity)
+                        db.profileDao().deleteProfile(profileToEdit) // Veritabanından sil
+
+                        // Eğer aktif profil silindiyse oturumu kapat
+                        if (activeProfile?.id == profileToEdit.id) {
+                            com.bybora.smartxtream.utils.SettingsManager.saveSelectedProfileId(this@MainActivity, -1)
+                            activeProfile = null
+                            clearBottomBar()
+                            textStatusProfileName.setText(R.string.text_no_profile)
+                        }
+
+                        android.widget.Toast.makeText(this@MainActivity, "Profil Silindi", android.widget.Toast.LENGTH_SHORT).show()
+                        showManagementDialog() // Yönetim listesine geri dön
+                        dialog.dismiss()
+                    }
+                }
+                .setNegativeButton("İptal", null)
+                .show()
+        }
+
+        // GÜNCELLEME İŞLEMİ
+        btnSave.setOnClickListener {
+            val name = etProfileName.text.toString().trim()
+            val user = etUsername.text.toString().trim()
+            val pass = etPassword.text.toString().trim()
+            val url = etUrl.text.toString().trim()
+
+            if (name.isEmpty() || user.isEmpty() || pass.isEmpty() || url.isEmpty()) {
+                android.widget.Toast.makeText(this, "Lütfen tüm alanları doldurun", android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                lifecycleScope.launch {
+                    val updatedProfile = profileToEdit.copy(
+                        profileName = name,
+                        username = user,
+                        password = pass,
+                        serverUrl = url
+                    )
+
+                    val db = com.bybora.smartxtream.database.AppDatabase.getInstance(this@MainActivity)
+                    db.profileDao().updateProfile(updatedProfile) // Güncelle
+
+                    android.widget.Toast.makeText(this@MainActivity, "Profil Güncellendi", android.widget.Toast.LENGTH_SHORT).show()
+
+                    // Eğer şu anki aktif profili güncellediysek, arayüzü de yenile
+                    if (activeProfile?.id == updatedProfile.id) {
+                        activeProfile = updatedProfile
+                        textStatusProfileName.text = updatedProfile.profileName
+                        // İçeriği yenilemek istersen: loadAllContent(updatedProfile)
+                    }
+
+                    showManagementDialog() // Yönetim listesine geri dön
+                    dialog.dismiss()
+                }
+            }
+        }
     }
 
     private fun showActionDialog(profile: Profile) {
@@ -653,6 +880,81 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         if (name.isNullOrEmpty()) return 0
         val lastMatch = yearRegex.findAll(name).lastOrNull()
         return lastMatch?.value?.toIntOrNull() ?: 0
+    }
+    // MainActivity.kt dosyasının en altı (ama class parantezi içinde)
+
+    private fun showAddProfileDialog() {
+        val dialogView = android.view.LayoutInflater.from(this).inflate(R.layout.dialog_add_profile, null)
+
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+
+        val dialog = builder.create()
+
+        // 1. Pencerenin kendi arka planını şeffaf yap (Bizim glass drawable görünsün diye)
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+
+        // 2. KRİTİK AYAR: Arkadaki ekranı %80 Karart (Dim Amount)
+        // Bu sayede arkadaki film listesi ile senin penceren karışmaz.
+        dialog.window?.setDimAmount(0.85f)
+
+        dialog.show()
+
+
+        val etProfileName = dialogView.findViewById<android.widget.EditText>(R.id.etProfileName)
+        val etUsername = dialogView.findViewById<android.widget.EditText>(R.id.etUsername)
+        val etPassword = dialogView.findViewById<android.widget.EditText>(R.id.etPassword)
+        val etUrl = dialogView.findViewById<android.widget.EditText>(R.id.etUrl)
+        val btnAdd = dialogView.findViewById<android.widget.Button>(R.id.btnAdd)
+        val btnCancel = dialogView.findViewById<android.widget.Button>(R.id.btnCancel)
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+
+        btnAdd.setOnClickListener {
+            val name = etProfileName.text.toString().trim()
+            val username = etUsername.text.toString().trim()
+            val password = etPassword.text.toString().trim()
+            val url = etUrl.text.toString().trim()
+
+            if (name.isEmpty() || username.isEmpty() || password.isEmpty() || url.isEmpty()) {
+                android.widget.Toast.makeText(this, "Lütfen tüm alanları doldurun", android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                // --- VERİTABANI KAYDI VE OTOMATİK GEÇİŞ ---
+                lifecycleScope.launch {
+                    val newProfile = com.bybora.smartxtream.database.Profile(
+                        profileName = name,
+                        username = username,
+                        password = password,
+                        serverUrl = url,
+                        isM3u = false
+                    )
+
+                    val db = com.bybora.smartxtream.database.AppDatabase.getInstance(this@MainActivity)
+
+                    // 1. Ekle ve ID al
+                    val newId = db.profileDao().insertProfile(newProfile)
+
+                    // 2. Yeni profil objesini oluştur
+                    val savedProfile = newProfile.copy(id = newId.toInt())
+
+                    // 3. Ayarlara kaydet (Seçili yap)
+                    com.bybora.smartxtream.utils.SettingsManager.saveSelectedProfileId(this@MainActivity, newId.toInt())
+
+                    // 4. UI Değişkenlerini Güncelle
+                    activeProfile = savedProfile
+                    textStatusProfileName.text = savedProfile.profileName
+
+                    android.widget.Toast.makeText(this@MainActivity, "${savedProfile.profileName} profiline geçildi", android.widget.Toast.LENGTH_SHORT).show()
+
+                    // 5. İÇERİĞİ YÜKLE (DÜZELTİLEN KISIM BURASI)
+                    // Senin dosyadaki fonksiyonun adı: loadAllContent
+                    loadAllContent(savedProfile)
+
+                    dialog.dismiss()
+                }
+            }
+        }
     }
 }
 // Veri taşıyıcı sınıf (5'li paket)

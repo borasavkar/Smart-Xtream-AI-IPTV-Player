@@ -40,7 +40,12 @@ class BillingManager(context: Context) {
 
     private val billingClient = BillingClient.newBuilder(context)
         .setListener(purchasesUpdatedListener)
-        // DÜZELTME 2: enablePendingPurchases() silindi (Deprecated)
+        // BU SATIR ÖNEMLİ: Lifetime (Tek seferlik) ürünler için zorunludur.
+        // Google 'eski' dese de kullanmazsak uygulama çöker. Uyarıyı susturuyoruz:
+        .apply {
+            @Suppress("DEPRECATION")
+            enablePendingPurchases()
+        }
         .build()
 
     fun startConnection() {

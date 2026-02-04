@@ -243,4 +243,8 @@
     <string name="sample_category_name">القنوات الوطنية</string>
     <string name="sample_category_count">(١٢٤)</string>
     <string name="sample_current_program">الآن: الأخبار</string>
+    <string name="title_select_profile">تحديد الملف الشخصي</string>
+    <string name="desc_close_dialog">إغلاق النافذة</string>
+    <string name="manage_profiles">إدارة الملفات الشخصية</string>
+    <string name="chose_profile_to_edit">اختر ملفاً شخصياً للتعديل</string>
 </resources>

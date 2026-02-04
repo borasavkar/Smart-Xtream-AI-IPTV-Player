@@ -21,20 +21,35 @@
 #-renamesourcefileattribute SourceFile
 # --- Smart Xtream AI IPTV Rules ---
 
-# Ağ Modellerini Koruma (Retrofit/Moshi için şart)
+# --- 1. AĞ MODELLERİNİ KORU ---
+# Paket ismin doğru, bunu tutuyoruz.
 -keep class com.bybora.smartxtream.network.** { *; }
--keep class com.bybora.smartxtream.database.** { *; }
 
-# Glide (Resim Yükleyici)
--keep public class * implements com.bumptech.glide.module.AppGlideModule
--keep public class * implements com.bumptech.glide.module.LibraryGlideModule
--keep class com.bumptech.glide.** { *; }
+# --- 2. KOTLIN METADATA KORUMASI (KRİTİK EKSİK BU!) ---
+# Moshi'nin KotlinJsonAdapterFactory kullanabilmesi için bu ŞARTTIR.
+# Bu olmazsa 'isMinifyEnabled = true' iken uygulama çalışmaz.
+-keep class kotlin.Metadata { *; }
 
-# OkHttp ve Retrofit Genel Kuralları
--dontwarn okhttp3.**
--dontwarn retrofit2.**
+# --- 3. MOSHI & RETROFIT İÇ YAPISI ---
+# Kütüphanelerin kendi içindeki isimlerin değişmesini engeller.
+-keep class com.squareup.moshi.** { *; }
+-keep interface com.squareup.moshi.** { *; }
+-keep class retrofit2.** { *; }
+-keep interface retrofit2.** { *; }
+
+# --- 4. ATTRIBUTES (Gerekli Bilgiler) ---
+# JSON eşleştirmesi için imzaların ve annotasyonların kalması lazım.
 -keepattributes Signature
 -keepattributes *Annotation*
+-keepattributes EnclosingMethod
+-keepattributes InnerClasses
+-keepattributes SourceFile,LineNumberTable
 
-# Room Veritabanı
+# --- 5. ROOM & GLIDE (Mevcut Kuralların) ---
+-keep class com.bybora.smartxtream.database.** { *; }
+-keep class com.bumptech.glide.** { *; }
+-keep public class * implements com.bumptech.glide.module.AppGlideModule
+-keep public class * implements com.bumptech.glide.module.LibraryGlideModule
 -dontwarn androidx.room.paging.**
+-dontwarn okhttp3.**
+-dontwarn retrofit2.**

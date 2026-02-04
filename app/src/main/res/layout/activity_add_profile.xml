@@ -11,6 +11,7 @@
     android:layout_marginStart="16dp"
     android:layout_marginTop="16dp"
     android:background="?attr/selectableItemBackgroundBorderless"
+    android:contentDescription="@string/btn_back"
     android:src="@drawable/abc_ic_ab_back_material"
     app:tint="#FFFFFF"
     app:layout_constraintStart_toStartOf="parent"

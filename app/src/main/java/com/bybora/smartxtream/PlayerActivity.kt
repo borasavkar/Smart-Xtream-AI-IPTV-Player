@@ -82,22 +82,16 @@ class PlayerActivity : BaseActivity() {
     private var nextEpisodeId: Int = -1
     private var streamName: String = ""
     private var streamIcon: String = ""
-
     private var episodeIdList: ArrayList<Int>? = null
-
     private val db by lazy { AppDatabase.getInstance(this) }
     private var isFav = false
-
     private var startTime: Long = 0
     private var startPosition: Long = 0
-
     private var lastTotalRxBytes: Long = 0
     private var lastTimeStamp: Long = 0
     private var smoothedSpeed: Double = 0.0
-
     private val handler = Handler(Looper.getMainLooper())
     private var isFallbackTried = false
-
     private val progressRunnable = object : Runnable {
         override fun run() {
             checkProgress()
@@ -223,7 +217,9 @@ class PlayerActivity : BaseActivity() {
         } else {
             nextEpisodeId = intent.getIntExtra("EXTRA_NEXT_EPISODE_ID", -1)
         }
-
+        if (streamType == "live" && (fileExtension == "mp4" || fileExtension == "mkv" || fileExtension == "avi")) {
+            streamType = "movie"
+        }
         if (directUrl != null) return true
         return !(serverUrl.isNullOrEmpty() || username.isNullOrEmpty() || streamId == -1)
     }
@@ -269,17 +265,17 @@ class PlayerActivity : BaseActivity() {
 
         if (streamType == "live") {
             builder.setBufferDurationsMs(
-                30_000, // Min: 30sn
-                120_000, // Max: 2dk
-                4_000,   // Start: 4sn (2.5 yerine 4 yaptık -> İlk takılmayı önler)
-                8_000    // Re-buffer: 8sn
+                3_000,
+                30_000, // Max: 2dk
+                1_500,   // Start: 4sn (2.5 yerine 4 yaptık -> İlk takılmayı önler)
+                3_000    // Re-buffer: 8sn
             )
         } else {
             builder.setBufferDurationsMs(
                 50_000,
                 180_000,
-                3_000,
-                5_000
+                5_000,
+                10_000
             )
             builder.setBackBuffer(20_000, true)
         }
@@ -377,7 +373,16 @@ class PlayerActivity : BaseActivity() {
                     .setWakeMode(C.WAKE_MODE_NETWORK)
                     .setSeekBackIncrementMs(10000)
                     .setSeekForwardIncrementMs(10000)
+                    .build()// -----------------------------------------------------------
+
+                val audioAttributes = androidx.media3.common.AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
                     .build()
+
+                // true parametresi: "Odaklanma bende olsun, başkası çalarsa sustur" demek.
+                player?.setAudioAttributes(audioAttributes, true)
+                // -----------------------------------------------------------
 
                 playerView?.player = player
                 playerView?.keepScreenOn = true

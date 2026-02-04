@@ -242,4 +242,8 @@
     <string name="sample_category_name">Nationale Kanäle</string>
     <string name="sample_category_count">(124)</string>,
     <string name="sample_current_program">Jetzt: Nachrichten</string>
+    <string name="title_select_profile">Profil auswählen</string>
+    <string name="desc_close_dialog">Fenster schließen</string>
+    <string name="manage_profiles">Profile verwalten</string>
+    <string name="chose_profile_to_edit">Wählen Sie ein Profil zum Bearbeiten</string>
 </resources>

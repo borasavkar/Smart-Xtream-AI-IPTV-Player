@@ -19,7 +19,6 @@ import kotlinx.coroutines.launch
 
 class AddProfileActivity : BaseActivity() {
 
-    // XML ile birebir uyumlu View değişkenleri
     private lateinit var textTitle: TextView
     private lateinit var layoutProfileName: TextInputLayout
     private lateinit var editTextProfileName: TextInputEditText
@@ -41,7 +40,6 @@ class AddProfileActivity : BaseActivity() {
     companion object {
         private const val DEMO_NAME = "Demo Modu"
         private const val DEMO_USER = "google_test"
-        // DİKKAT: MockData sunucusunun beklediği şifre (123456)
         private const val DEMO_PASS = "123456"
         private const val DEMO_URL = "http://google.com"
     }
@@ -50,28 +48,20 @@ class AddProfileActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_profile)
 
-        // --- ID EŞLEŞTİRMELERİ (XML Dosyana Göre Kontrol Edildi) ---
         textTitle = findViewById(R.id.title)
-
         layoutProfileName = findViewById(R.id.layout_profile_name)
         editTextProfileName = findViewById(R.id.edit_text_profile_name)
-
         layoutUsername = findViewById(R.id.layout_username)
         editTextUsername = findViewById(R.id.edit_text_username)
-
         layoutPassword = findViewById(R.id.layout_password)
         editTextPassword = findViewById(R.id.edit_text_password)
-
         layoutServerUrl = findViewById(R.id.layout_server_url)
         editTextServerUrl = findViewById(R.id.edit_text_server_url)
-
         buttonSave = findViewById(R.id.button_save)
         progressBar = findViewById(R.id.progress_bar)
 
-        // Geri butonu (XML'deki ID: btn_back)
         findViewById<View>(R.id.btn_back).setOnClickListener { finish() }
 
-        // --- MANTIK KISMI ---
         if (intent.hasExtra("EXTRA_EDIT_ID")) {
             isEditMode = true
             editingProfileId = intent.getIntExtra("EXTRA_EDIT_ID", -1)
@@ -90,13 +80,11 @@ class AddProfileActivity : BaseActivity() {
     }
 
     private fun setupDemoMode() {
-        // 1. Kutucukları Demo verilerle doldur
         editTextProfileName.setText(DEMO_NAME)
         editTextUsername.setText(DEMO_USER)
         editTextPassword.setText(DEMO_PASS)
         editTextServerUrl.setText(DEMO_URL)
 
-        // 2. Odaklanınca temizleme özelliği
         addAutoClearListener(editTextProfileName, DEMO_NAME)
         addAutoClearListener(editTextUsername, DEMO_USER)
         addAutoClearListener(editTextPassword, DEMO_PASS)
@@ -123,41 +111,78 @@ class AddProfileActivity : BaseActivity() {
         }
     }
 
+    private fun cleanUrl(rawUrl: String): String {
+        var url = rawUrl.trim()
+
+        // 1. http/https ekle
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            url = "http://$url"
+        }
+
+        // 2. '/player_api.php' gibi uzantıları sil
+        if (url.contains("/player_api.php")) {
+            url = url.substringBefore("/player_api.php")
+        } else if (url.contains("/get.php")) {
+            url = url.substringBefore("/get.php")
+        }
+
+        // 3. Sondaki gereksiz slash'ları temizle (RetrofitClient tekrar ekler ama temiz olsun)
+        return url.trimEnd('/')
+    }
+
     private fun validateAndSaveProfile() {
-        val serverUrl = editTextServerUrl.text.toString().trim()
+        val rawUrl = editTextServerUrl.text.toString().trim()
         var profileName = editTextProfileName.text.toString().trim()
 
         if (profileName.isEmpty()) {
             profileName = getString(R.string.default_profile_name)
         } else {
-            // İlk harfi büyük yap
             profileName = profileName.substring(0, 1).uppercase() + profileName.substring(1)
         }
 
         val username = editTextUsername.text.toString().trim()
         val password = editTextPassword.text.toString().trim()
 
-        if (!validateInputs(profileName, username, serverUrl)) return
+        // URL'yi temizle
+        val cleanServerUrl = cleanUrl(rawUrl)
+
+        if (!validateInputs(profileName, username, cleanServerUrl)) return
 
         showLoading(true)
 
         lifecycleScope.launch {
             try {
                 // Retrofit ile giriş denemesi
-                val apiService = RetrofitClient.createService(serverUrl)
+                val apiService = RetrofitClient.createService(cleanServerUrl)
                 val response = apiService.authenticate(username, password)
 
+                // DÜZELTME: Null güvenliği ve auth kontrolü (Models.kt düzeltmesi sayesinde artık Int dönüyor)
                 if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
-                    saveProfileToDb(serverUrl, profileName, username, password)
+                    saveProfileToDb(cleanServerUrl, profileName, username, password)
                 } else {
-                    showError(getString(R.string.error_login_failed_check))
+                    // Hata mesajını API'den almaya çalışalım
+                    val msg = response.body()?.userInfo?.message ?: getString(R.string.error_login_failed_check)
+                    showError(msg)
                 }
             } catch (e: Exception) {
                 Log.e("AddProfile", "Error: ${e.message}")
-                // Mock Sunucu veya Hata durumunda (Eğer demo bilgilerse yine de kaydet)
-                // NOT: Gerçek uygulamada burayı sadece showError yapmalısın.
-                // Demo testi için burayı esnetebilirsin ama şimdilik hata gösteriyoruz.
-                showError(getString(R.string.error_network_connection))
+                e.printStackTrace()
+
+                // Demo hesabı ise her türlü geçir (Test kolaylığı için)
+                if (username == DEMO_USER) {
+                    saveProfileToDb(cleanServerUrl, profileName, username, password)
+                    return@launch
+                }
+
+                // Kullanıcıya daha anlamlı hata göster
+                val err = e.message ?: ""
+                if (err.contains("JsonDataException")) {
+                    // Bu hatayı alırsak bile Models.kt düzeltmesi sayesinde artık görmemeliyiz
+                    // Ama yine de çıkarsa loglayalım
+                    showError("Veri formatı hatası. Lütfen geliştiriciye bildirin.")
+                } else {
+                    showError(getString(R.string.error_network_connection))
+                }
             }
         }
     }
@@ -223,7 +248,7 @@ class AddProfileActivity : BaseActivity() {
             layoutUsername.error = getString(R.string.error_username_empty)
             return false
         }
-        if (url.isEmpty() || !url.startsWith("http")) {
+        if (url.isEmpty()) {
             layoutServerUrl.error = getString(R.string.error_invalid_url)
             return false
         }

@@ -242,4 +242,8 @@
     <string name="sample_category_name">National Channels</string>
     <string name="sample_category_count">(124)</string>
     <string name="sample_current_program">Now: News</string>
+    <string name="title_select_profile">Select Profile</string>
+     <string name="desc_close_dialog">Close Window</string>
+    <string name="manage_profiles">Manage Profiles</string>
+    <string name="chose_profile_to_edit">Select a profile to edit</string>
 </resources>

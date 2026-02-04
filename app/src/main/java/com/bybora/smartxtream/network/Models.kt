@@ -9,21 +9,32 @@ data class XtreamResponse(
 )
 
 data class UserInfo(
-    val username: String,
-    val password: String,
+    val username: String?,
+    val password: String?,
     val message: String?,
-    val auth: Int,
+    // DÜZELTME: auth bazen "1" (String) bazen 1 (Int) gelir. Patlamaması için Any? yaptık.
+    @param:Json(name = "auth") private val _auth: Any? = null,
     val status: String?,
     @param:Json(name = "exp_date") val expiryDate: String?,
     @param:Json(name = "is_trial") val isTrial: String?
-)
+) {
+    // Güvenli Auth Kontrolü
+    val auth: Int
+        get() {
+            return when (_auth) {
+                is Number -> _auth.toInt()
+                is String -> _auth.toIntOrNull() ?: 0
+                else -> 0
+            }
+        }
+}
 
 data class ServerInfo(
-    val url: String,
-    val port: String,
-    val httpsport: String,
-    @param:Json(name = "server_protocol") val protocol: String,
-    val timezone: String
+    val url: String?,
+    val port: String?,
+    @param:Json(name = "https_port") val httpsport: String?,
+    @param:Json(name = "server_protocol") val protocol: String?,
+    val timezone: String?
 )
 
 // --- CANLI YAYIN ---
@@ -49,13 +60,11 @@ data class VodStream(
     @param:Json(name = "stream_icon") val streamIcon: String?,
     @param:Json(name = "category_id") val categoryId: String?,
     @param:Json(name = "container_extension") val fileExtension: String?,
-    // DÜZELTME: Veri tipi 'Any?' (Sayı, String veya Null gelebilir)
     @param:Json(name = "rating") private val _rating: Any? = null,
     @param:Json(name = "rating_5based") private val _rating5: Any? = null,
     @param:Json(name = "added") val added: String? = "",
     val directSource: String? = null
 ) {
-    // Güvenli Dönüştürücü: Ne gelirse gelsin Double'a çevirir, hata vermez.
     val rating: Double
         get() {
             return when (_rating) {
@@ -66,13 +75,11 @@ data class VodStream(
         }
 }
 
-// Film Kategorileri
 data class VodCategory(
     @param:Json(name = "category_id") val categoryId: String,
     @param:Json(name = "category_name") val categoryName: String
 )
 
-// Film Detayları
 data class VodInfoResponse(
     val info: VodInfoData?,
     @param:Json(name = "movie_data") val movieData: VodMovieData?
@@ -86,7 +93,7 @@ data class VodInfoData(
     @param:Json(name = "director") val director: String?,
     @param:Json(name = "genre") val genre: String?,
     @param:Json(name = "release_date") val releaseDate: String?,
-    @param:Json(name = "rating") val rating: String?, // Detayda genelde String gelir
+    @param:Json(name = "rating") val rating: String?,
     @param:Json(name = "duration") val duration: String?,
     @param:Json(name = "youtube_trailer") val youtubeTrailer: String?
 )
@@ -106,8 +113,6 @@ data class SeriesStream(
     @param:Json(name = "stream_icon") val streamIcon: String?,
     val cover: String?,
     @param:Json(name = "category_id") val categoryId: String?,
-
-    // DÜZELTME: Diziler için de aynı koruma
     @param:Json(name = "rating") private val _rating: Any? = null,
     @param:Json(name = "rating_5based") private val _rating5: Any? = null,
     @param:Json(name = "last_modified") val lastModified: String? = null
@@ -122,7 +127,6 @@ data class SeriesStream(
         }
 }
 
-// Dizi Detayları
 data class SeriesInfoResponse(
     val seasons: List<Season>?,
     val info: SeriesInfoData?,
@@ -162,7 +166,7 @@ data class EpisodeInfo(
     val plot: String?
 )
 
-// --- EPG (YAYIN AKIŞI) ---
+// --- EPG ---
 data class EpgResponse(
     @param:Json(name = "epg_listings") val listings: List<EpgListing>
 )
@@ -176,7 +180,7 @@ data class EpgListing(
     val description: String?
 )
 
-// --- UI YARDIMCI MODELLER ---
+// UI Helper
 data class ChannelWithEpg(
     val channel: LiveStream,
     var epgNow: EpgListing?

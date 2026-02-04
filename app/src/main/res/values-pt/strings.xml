@@ -243,4 +243,8 @@
     <string name="sample_category_name">Canais Nacionais</string>
     <string name="sample_category_count">(124)</string>
     <string name="sample_current_program">Agora: Notícias</string>
+    <string name="title_select_profile">Selecionar Perfil</string>
+    <string name="desc_close_dialog">Fechar Janela</string>
+    <string name="manage_profiles">Gerenciar Perfis</string>
+    <string name="chose_profile_to_edit">Selecione um perfil para editar</string>
 </resources>

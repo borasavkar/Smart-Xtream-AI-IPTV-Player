@@ -242,4 +242,8 @@
     <string name="sample_category_name">Chaînes Nationales</string>
     <string name="sample_category_count">(124)</string>
     <string name="sample_current_program">Maintenant : Actualités</string>
+    <string name="title_select_profile">Sélectionner un profil</string>
+    <string name="desc_close_dialog">Fermer la fenêtre</string>
+    <string name="manage_profiles">Gérer les profils</string>
+    <string name="chose_profile_to_edit">Sélectionnez un profil à modifier</string>
 </resources>
