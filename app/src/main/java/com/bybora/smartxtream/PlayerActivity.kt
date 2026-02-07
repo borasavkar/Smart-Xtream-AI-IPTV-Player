@@ -122,6 +122,7 @@ class PlayerActivity : BaseActivity() {
         lastTimeStamp = System.currentTimeMillis()
 
         initViews()
+        checkSystemRamStatus()
         if (getIntentData()) {
             if (streamType == "series") btnFavoritePlayer.visibility = View.GONE
             if (streamType == "live") disableSeekingForLive()
@@ -131,12 +132,27 @@ class PlayerActivity : BaseActivity() {
             finish()
         }
 
+
         // EKRAN MODU BAŞLANGIÇ KONTROLÜ
         if (isTvDevice()) {
             hideSystemUI()
         } else {
             val orientation = resources.configuration.orientation
             adjustFullScreen(orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE)
+        }
+    }
+    private fun checkSystemRamStatus() {
+        try {
+            val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val memInfo = android.app.ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memInfo)
+
+            if (memInfo.lowMemory) {
+                Toast.makeText(this, "⚠️ Cihaz belleği kritik seviyede!", Toast.LENGTH_LONG).show()
+                android.util.Log.w("PlayerActivity", "⚠️ Sistem düşük bellek modunda!")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
     override fun onResume() {
@@ -246,43 +262,79 @@ class PlayerActivity : BaseActivity() {
         val memoryInfo = android.app.ActivityManager.MemoryInfo()
         activityManager.getMemoryInfo(memoryInfo)
 
-        val totalRam = memoryInfo.totalMem / (1024 * 1024)
+        val totalRamMB = memoryInfo.totalMem / (1024 * 1024)
+        val availableRamMB = memoryInfo.availMem / (1024 * 1024)
 
-        // RAM: 3GB üstü cihazlarda geniş alan, diğerlerinde standart.
-        val targetBufferBytes = if (totalRam > 2800) {
-            200 * 1024 * 1024 // 200 MB (Yeterli ve güvenli)
-        } else {
-            80 * 1024 * 1024  // 80 MB (Ekonomik)
+        // Kullanılabilir RAM'e göre dinamik profil
+        val isLowMemory = availableRamMB < 500 || totalRamMB < 2048
+
+        // ============================================================
+        // GENİŞ PROFİL SİSTEMİ (5 SEVİYE)
+        // ============================================================
+        data class BufferProfile(
+            val targetBufferMB: Int,
+            val minBuffer: Int,
+            val maxBuffer: Int,
+            val startBuffer: Int,
+            val rebuffer: Int,
+            val segmentMultiplier: Int,
+            val backBuffer: Int,
+            val name: String
+        )
+
+        val profile = when {
+            // SEVİYE 1: KRİTİK DÜŞÜK (< 2GB veya müsait < 500MB)
+            isLowMemory -> BufferProfile(
+                30, 3000, 15000, 1500, 3000, 1, 0,
+                "Ekonomik Mod"
+            )
+
+            // SEVİYE 2: DÜŞÜK (2-3GB)
+            totalRamMB < 3000 -> BufferProfile(
+                60, 8000, 30000, 2000, 4000, 1, 10000,
+                "Standart Mod"
+            )
+
+            // SEVİYE 3: ORTA (3-4GB)
+            totalRamMB < 4096 -> BufferProfile(
+                120, 12000, 45000, 2500, 5000, 2, 15000,
+                "Gelişmiş Mod"
+            )
+
+            // SEVİYE 4: YÜKSEK (4-6GB)
+            totalRamMB < 6144 -> BufferProfile(
+                200, 15000, 60000, 2500, 5000, 2, 20000,
+                "Yüksek Performans"
+            )
+
+            // SEVİYE 5: ULTRA (6GB+)
+            else -> BufferProfile(
+                350, 25000, 120000, 3000, 6000, 4, 30000,
+                "Ultra Performans"
+            )
         }
 
-        // Standart Bloklar (En uyumlu)
-        val allocator = androidx.media3.exoplayer.upstream.DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
+        android.util.Log.i("PlayerActivity",
+            "💾 RAM: ${totalRamMB}MB | Müsait: ${availableRamMB}MB | Profil: ${profile.name} | Buffer: ${profile.targetBufferMB}MB")
 
-        val builder = DefaultLoadControl.Builder()
+        val allocator = androidx.media3.exoplayer.upstream.DefaultAllocator(
+            true,
+            C.DEFAULT_BUFFER_SEGMENT_SIZE * profile.segmentMultiplier
+        )
+
+        return DefaultLoadControl.Builder()
             .setAllocator(allocator)
-            .setTargetBufferBytes(targetBufferBytes)
-            .setPrioritizeTimeOverSizeThresholds(true)
-
-        if (streamType == "live") {
-            builder.setBufferDurationsMs(
-                3_000,
-                30_000, // Max: 2dk
-                1_500,   // Start: 4sn (2.5 yerine 4 yaptık -> İlk takılmayı önler)
-                3_000    // Re-buffer: 8sn
-            )
-        } else {
-            builder.setBufferDurationsMs(
-                50_000,
-                180_000,
-                5_000,
-                10_000
-            )
-            builder.setBackBuffer(20_000, true)
-        }
-
-        return builder.build()
+            .setBufferDurationsMs(profile.minBuffer, profile.maxBuffer, profile.startBuffer, profile.rebuffer)
+            .setTargetBufferBytes(profile.targetBufferMB * 1024 * 1024)
+            .setPrioritizeTimeOverSizeThresholds(isLowMemory)
+            .apply {
+                // Geri buffer (sadece orta+ cihazlarda)
+                if (profile.backBuffer > 0 && streamType != "live") {
+                    setBackBuffer(profile.backBuffer, true)
+                }
+            }
+            .build()
     }
-
     private fun initializePlayer() {
         if (player == null) {
             try {
@@ -306,10 +358,23 @@ class PlayerActivity : BaseActivity() {
                 }
 
                 // 1. BANDWIDTH METER (AKILLI BAŞLANGIÇ)
-                // 40 Mbps yalanını bırakıp "15 Mbps" diyoruz.
-                // Bu sayede Player "Boğulmadan" başlar, sonra vites yükseltir.
+                // Bandwidth meter kısmını bul ve değiştir:
+                val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+                val memInfo = android.app.ActivityManager.MemoryInfo()
+                activityManager.getMemoryInfo(memInfo)
+                val totalRam = memInfo.totalMem / (1024 * 1024)
+
+                // GENİŞLETİLMİŞ BAŞLANGIÇ TAHMİNİ
+                val initialBitrate = when {
+                    totalRam < 2048 -> 2_500_000L    // 2.5 Mbps (480p başlat)
+                    totalRam < 3000 -> 5_000_000L    // 5 Mbps (720p başlat)
+                    totalRam < 4096 -> 10_000_000L   // 10 Mbps (1080p başlat)
+                    totalRam < 6144 -> 20_000_000L   // 20 Mbps (1080p+ başlat)
+                    else -> 40_000_000L              // 40 Mbps (4K başlat) 🚀
+                }
+
                 val bandwidthMeter = androidx.media3.exoplayer.upstream.DefaultBandwidthMeter.Builder(this)
-                    .setInitialBitrateEstimate(15_000_000)
+                    .setInitialBitrateEstimate(initialBitrate)
                     .build()
 
                 // 2. TRACK SELECTOR
@@ -437,7 +502,23 @@ class PlayerActivity : BaseActivity() {
 
     private fun setupCache(context: Context, upstreamFactory: DataSource.Factory): DataSource.Factory {
         if (simpleCache == null) {
-            val evictor = LeastRecentlyUsedCacheEvictor(2048L * 1024 * 1024)
+            val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val memoryInfo = android.app.ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memoryInfo)
+            val totalRamMB = memoryInfo.totalMem / (1024 * 1024)
+
+            // GENİŞLETİLMİŞ CACHE SİSTEMİ
+            val cacheSize = when {
+                totalRamMB < 2048 -> 100L * 1024 * 1024   // 100 MB (ekonomik)
+                totalRamMB < 3000 -> 300L * 1024 * 1024   // 300 MB (standart)
+                totalRamMB < 4096 -> 500L * 1024 * 1024   // 500 MB (gelişmiş)
+                totalRamMB < 6144 -> 800L * 1024 * 1024   // 800 MB (yüksek)
+                else -> 1200L * 1024 * 1024               // 1.2 GB (ultra) 🚀
+            }
+
+            android.util.Log.i("PlayerActivity", "💿 Cache: ${cacheSize / (1024 * 1024)}MB")
+
+            val evictor = LeastRecentlyUsedCacheEvictor(cacheSize)
             val databaseProvider = StandaloneDatabaseProvider(context)
             simpleCache = SimpleCache(File(context.cacheDir, "media"), evictor, databaseProvider)
         }
