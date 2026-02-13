@@ -247,4 +247,8 @@
     <string name="desc_close_dialog">Fechar Janela</string>
     <string name="manage_profiles">Gerenciar Perfis</string>
     <string name="chose_profile_to_edit">Selecione um perfil para editar</string>
+    <string name="title_delete_profile">Excluir Perfil</string>
+    <string name="msg_confirm_delete_profile">Este perfil será excluído. Tem certeza?</string>
+    <string name="msg_profile_deleted">Perfil Excluído</string>
+    <string name="msg_fill_all_fields">Por favor, preencha todos os campos</string>
 </resources>

@@ -247,4 +247,8 @@
     <string name="desc_close_dialog">Cerrar ventana</string>
     <string name="manage_profiles">Gestionar perfiles</string>
     <string name="chose_profile_to_edit">Selecciona un perfil para editar</string>
+    <string name="title_delete_profile">Eliminar perfil</string>
+    <string name="msg_confirm_delete_profile">Este perfil será eliminado. ¿Está seguro?</string>
+    <string name="msg_profile_deleted">Perfil eliminado</string>
+    <string name="msg_fill_all_fields">Por favor, rellene todos los campos</string>
 </resources>

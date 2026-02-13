@@ -55,7 +55,6 @@ import kotlin.math.max
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayerActivity : BaseActivity() {
-
     private var player: ExoPlayer? = null
     private var playerView: PlayerView? = null
     private var trackSelector: DefaultTrackSelector? = null
@@ -90,6 +89,9 @@ class PlayerActivity : BaseActivity() {
     private var lastTotalRxBytes: Long = 0
     private var lastTimeStamp: Long = 0
     private var smoothedSpeed: Double = 0.0
+    private var streamGenre: String = ""
+    private var streamCast: String = ""
+    private var streamDirector: String = ""
     private val handler = Handler(Looper.getMainLooper())
     private var isFallbackTried = false
     private val progressRunnable = object : Runnable {
@@ -222,6 +224,9 @@ class PlayerActivity : BaseActivity() {
         streamName = intent.getStringExtra("EXTRA_STREAM_NAME") ?: getString(R.string.channel_default_name, streamId)
         streamIcon = intent.getStringExtra("EXTRA_STREAM_ICON") ?: ""
         episodeIdList = intent.getIntegerArrayListExtra("EXTRA_EPISODE_LIST")
+        streamGenre = intent.getStringExtra("EXTRA_GENRE") ?: ""
+        streamCast = intent.getStringExtra("EXTRA_CAST") ?: ""
+        streamDirector = intent.getStringExtra("EXTRA_DIRECTOR") ?: ""
 
         if (episodeIdList != null && streamId != -1) {
             val currentIndex = episodeIdList!!.indexOf(streamId)
@@ -636,9 +641,31 @@ class PlayerActivity : BaseActivity() {
                 isFav = false
                 Toast.makeText(this@PlayerActivity, getString(R.string.msg_fav_removed), Toast.LENGTH_SHORT).show()
             } else {
-                val fav = Favorite(streamId = streamId, streamType = streamType ?: "live", name = streamName, image = streamIcon, categoryId = categoryId)
+                val fav = Favorite(
+                    streamId = streamId,
+                    streamType = streamType ?: "live",
+                    name = streamName,
+                    image = streamIcon,
+                    categoryId = categoryId
+                )
                 db.favoriteDao().addFavorite(fav)
-                isFav = true
+
+                // --- YAPAY ZEKA ---
+                val activeProfileId = com.bybora.smartxtream.utils.SettingsManager.getSelectedProfileId(this@PlayerActivity)
+                val meta = com.bybora.smartxtream.utils.PreferenceManager.MetaDataContainer(
+                    genre = streamGenre,
+                    cast = streamCast,
+                    director = streamDirector
+                )
+                com.bybora.smartxtream.utils.PreferenceManager.analyzeAndStore(
+                    applicationContext,
+                    activeProfileId,
+                    meta,
+                    com.bybora.smartxtream.utils.PreferenceManager.SCORE_FAVORITE
+                )
+                // ------------------
+
+                isFav = true // EKLENDİ/KONTROL EDİLDİ
                 Toast.makeText(this@PlayerActivity, getString(R.string.msg_fav_added), Toast.LENGTH_SHORT).show()
             }
             updateFavIcon()
@@ -652,22 +679,39 @@ class PlayerActivity : BaseActivity() {
 
     private fun handlePlayerError(error: PlaybackException) {
         val cause = error.cause
-        // --- AKILLI KURTARMA MEKANİZMASI ---
-        if (streamType == "live" && !isFallbackTried) {
-            val isCodecError = error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED
-            val isNetError = cause is HttpDataSource.InvalidResponseCodeException && (cause.responseCode in 400..499)
 
-            if (isCodecError || isNetError) {
-                isFallbackTried = true
-                fileExtension = if (fileExtension == "ts") "m3u8" else "ts"
-                Toast.makeText(this, "Alternatif yayın deneniyor...", Toast.LENGTH_SHORT).show()
-                player?.release()
-                player = null
-                initializePlayer()
-                return
+        // --- SENİN MEVCUT AKILLI HATA KONTROLLERİN ---
+        val isCodecError = error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED
+        val isNetError = cause is HttpDataSource.InvalidResponseCodeException && (cause.responseCode in 400..499)
+        // Ekstra: Bağlantı kopması durumunu da ekleyelim ki tam koruma olsun
+        val isConnectionError = error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
+
+        // --- AKILLI KURTARMA + CACHE TEMİZLİĞİ ---
+        if (streamType == "live" && !isFallbackTried) {
+
+            // Senin belirlediğin hatalardan biri varsa:
+            if (isCodecError || isNetError || isConnectionError) {
+
+                // Kullanıcıya bilgi ver
+                Toast.makeText(this, "Yayın sorunu algılandı. Önbellek temizlenip alternatif deneniyor...", Toast.LENGTH_LONG).show()
+
+                // 1. ÖNCE TEMİZLİK YAP (Yeni Eklediğimiz Özellik)
+                com.bybora.smartxtream.utils.SmartCacheManager.clearCache(this) {
+
+                    // 2. TEMİZLİK BİTİNCE SENİN FALLBACK KODUNU ÇALIŞTIR
+                    isFallbackTried = true
+
+                    // Uzantıyı değiştir (ts <-> m3u8)
+                    fileExtension = if (fileExtension == "ts") "m3u8" else "ts"
+
+                    // Player'ı yeniden başlat
+                    player?.release()
+                    player = null
+                    initializePlayer()
+                }
+                return // Diyalog göstermeden çık, çünkü tekrar deniyoruz.
             }
         }
-        // -----------------------------------
 
         val title: String; var msg: String;
         when {
@@ -829,14 +873,55 @@ class PlayerActivity : BaseActivity() {
 
     private fun saveProgress() {
         if (player == null || streamType == "live") return
-        val pos = player!!.currentPosition; val dur = player!!.duration
+
+        // 1. ÖNCE DEĞİŞKENLERİ TANIMLIYORUZ (Sıralama Önemli!)
+        val pos = player!!.currentPosition
+        val dur = player!!.duration
+        // 'watched' değişkenini BURADA oluşturuyoruz:
         val watched = (System.currentTimeMillis() - startTime) / 1000
+
+        // 2. İZLEME SÜRESİ ANALİZİ (Yapay Zeka)
+        // Artık 'watched' tanımlı olduğu için hata vermez.
+        val watchedMinutes = (watched / 60).toDouble()
+
+        if (watchedMinutes > 5) { // En az 5 dk izlediyse puan ver
+            val activeProfileId = com.bybora.smartxtream.utils.SettingsManager.getSelectedProfileId(this)
+            val points = watchedMinutes * com.bybora.smartxtream.utils.PreferenceManager.SCORE_WATCH_PER_MIN
+
+            // Meta verileri hazırla
+            val meta = com.bybora.smartxtream.utils.PreferenceManager.MetaDataContainer(streamGenre, streamCast, streamDirector)
+
+            // Veritabanına kaydet (Arka planda)
+            lifecycleScope.launch(Dispatchers.IO) {
+                com.bybora.smartxtream.utils.PreferenceManager.analyzeAndStore(
+                    applicationContext,
+                    activeProfileId,
+                    meta,
+                    points
+                )
+            }
+        }
+
+        // 3. KALDIĞI YERİ KAYDETME (Interaction)
         val finished = (dur > 0) && (pos >= (dur * 0.95))
+
         lifecycleScope.launch(Dispatchers.IO) {
             val db = AppDatabase.getInstance(applicationContext)
             val exist = db.interactionDao().getInteraction(streamId, streamType!!)
+
+            // Burada da 'watched' kullanılıyor, artık sorun yok.
             val total = (exist?.durationSeconds ?: 0) + watched
-            val interact = Interaction(id = exist?.id ?: 0, streamId = streamId, streamType = streamType!!, categoryId = categoryId ?: "0", durationSeconds = total, lastPosition = if (finished) 0 else pos, maxDuration = dur, isFinished = finished)
+
+            val interact = Interaction(
+                id = exist?.id ?: 0,
+                streamId = streamId,
+                streamType = streamType!!,
+                categoryId = categoryId ?: "0",
+                durationSeconds = total,
+                lastPosition = if (finished) 0 else pos,
+                maxDuration = dur,
+                isFinished = finished
+            )
             db.interactionDao().logInteraction(interact)
         }
     }

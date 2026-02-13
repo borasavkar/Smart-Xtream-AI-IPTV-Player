@@ -247,4 +247,8 @@
     <string name="desc_close_dialog">إغلاق النافذة</string>
     <string name="manage_profiles">إدارة الملفات الشخصية</string>
     <string name="chose_profile_to_edit">اختر ملفاً شخصياً للتعديل</string>
+    <string name="title_delete_profile">حذف الملف الشخصي</string>
+    <string name="msg_confirm_delete_profile">سيتم حذف هذا الملف الشخصي. هل أنت متأكد؟</string>
+    <string name="msg_profile_deleted">تم حذف الملف الشخصي</string>
+    <string name="msg_fill_all_fields">يرجى ملء جميع الحقول</string>
 </resources>

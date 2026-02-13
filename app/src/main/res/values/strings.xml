@@ -247,4 +247,8 @@
     <string name="desc_close_dialog">Pencereyi Kapat</string>
     <string name="manage_profiles">Profilleri Yönet</string>
     <string name="chose_profile_to_edit">Düzenlemek için bir profil seçin</string>
+    <string name="title_delete_profile">Profili Sil</string>
+    <string name="msg_confirm_delete_profile">Bu profil silinecek. Emin misiniz?</string>
+    <string name="msg_profile_deleted">Profil Silindi</string>
+    <string name="msg_fill_all_fields">Lütfen tüm alanları doldurun</string>
 </resources>

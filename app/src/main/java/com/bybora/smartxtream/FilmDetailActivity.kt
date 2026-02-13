@@ -47,6 +47,12 @@ class FilmDetailActivity : BaseActivity() {
     private var currentMovieImage = ""
     private var categoryId = "0"
 
+    // --- EKLEME 1: Meta Veri Değişkenleri ---
+    private var movieGenre: String = ""
+    private var movieCast: String = ""
+    private var movieDirector: String = ""
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_film_detail)
@@ -104,6 +110,9 @@ class FilmDetailActivity : BaseActivity() {
                     currentMovieName = info?.name ?: getString(R.string.film_name)
                     currentMovieImage = info?.image ?: ""
                     currentExtension = movieData?.extension ?: "mp4"
+                    movieGenre = info?.genre ?: ""
+                    movieCast = info?.cast ?: ""
+                    movieDirector = info?.director ?: ""
                     directSource = movieData?.directSource
 
                     // --- DÜZELTME BAŞLANGICI: Strings.xml kullanımı ---
@@ -155,6 +164,9 @@ class FilmDetailActivity : BaseActivity() {
             putExtra("EXTRA_STREAM_NAME", currentMovieName)
             putExtra("EXTRA_STREAM_ICON", currentMovieImage)
             putExtra("EXTRA_EXTENSION", currentExtension)
+            putExtra("EXTRA_GENRE", movieGenre)
+            putExtra("EXTRA_CAST", movieCast)
+            putExtra("EXTRA_DIRECTOR", movieDirector)
             if (directSource != null) putExtra("EXTRA_DIRECT_URL", directSource)
         }
         startActivity(intent)
@@ -181,7 +193,21 @@ class FilmDetailActivity : BaseActivity() {
                     image = currentMovieImage,
                     categoryId = categoryId
                 )
-                db.favoriteDao().addFavorite(fav)
+                db.favoriteDao().addFavorite(fav)// --- EKLEME 4: Favori Analizi ---
+                val activeProfileId = com.bybora.smartxtream.utils.SettingsManager.getSelectedProfileId(this@FilmDetailActivity)
+                val meta = com.bybora.smartxtream.utils.PreferenceManager.MetaDataContainer(
+                    genre = movieGenre,
+                    cast = movieCast,
+                    director = movieDirector
+                )
+                // Yapay Zekaya Gönder (+50 Puan)
+                com.bybora.smartxtream.utils.PreferenceManager.analyzeAndStore(
+                    applicationContext,
+                    activeProfileId,
+                    meta,
+                    com.bybora.smartxtream.utils.PreferenceManager.SCORE_FAVORITE
+                )
+                // -------------------------------
                 isFav = true
                 Toast.makeText(this@FilmDetailActivity, getString(R.string.msg_fav_added), Toast.LENGTH_SHORT).show()
             }

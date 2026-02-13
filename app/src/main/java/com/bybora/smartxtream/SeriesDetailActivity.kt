@@ -46,6 +46,13 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
     private var isFav = false
     private var currentSeriesName = ""
     private var currentSeriesImage = ""
+    private var seriesGenre: String = ""
+    private var seriesCast: String = ""
+
+    // --- DÜZELTME 1: Tırnak hatası giderildi ---
+    private var seriesDirector: String = ""
+    // -------------------------------------------
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -105,17 +112,18 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
 
                     currentSeriesName = info?.name ?: getString(R.string.series_header)
                     currentSeriesImage = info?.cover ?: ""
+                    seriesGenre = info?.genre ?: ""
+                    seriesCast = info?.cast ?: ""
+                    seriesDirector = info?.director ?: ""
 
-                    // --- DÜZELTME BAŞLANGICI: Strings.xml kullanımı ---
                     textTitle.text = currentSeriesName
                     textPlot.text = if (info?.plot.isNullOrEmpty()) getString(R.string.text_no_description) else info.plot
 
-                    val labelRating = getString(R.string.label_rating) // "IMDB:"
+                    val labelRating = getString(R.string.label_rating)
                     val rating = info?.rating ?: "N/A"
-                    val genre = info?.genre ?: getString(R.string.text_genre_default) // "Genel"
+                    val genre = info?.genre ?: getString(R.string.text_genre_default)
 
                     textInfo.text = getString(R.string.format_series_info, labelRating, rating, genre)
-                    // --- DÜZELTME BİTİŞİ ---
 
                     if (currentSeriesImage.isNotEmpty()) {
                         Glide.with(this@SeriesDetailActivity).load(currentSeriesImage).into(imgPoster)
@@ -129,9 +137,7 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
                 }
                 progressBar.visibility = View.GONE
             } catch (e: Exception) {
-                // Hatayı Logcat'e bas (Sadece geliştirici görür)
                 android.util.Log.e("SeriesDetail", "Dizi detayı hatası", e)
-
                 progressBar.visibility = View.GONE
                 Toast.makeText(this@SeriesDetailActivity, getString(R.string.error_fetch_details), Toast.LENGTH_SHORT).show()
             }
@@ -148,18 +154,37 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
     private fun toggleFavorite() {
         lifecycleScope.launch {
             if (isFav) {
+                // --- DÜZELTME 2: 'streamId' ve 'vod' yerine 'seriesId' ve 'series' kullanıldı ---
                 db.favoriteDao().removeFavorite(seriesId, "series")
                 isFav = false
                 Toast.makeText(this@SeriesDetailActivity, getString(R.string.msg_fav_removed), Toast.LENGTH_SHORT).show()
             } else {
+                // --- DÜZELTME 3: Dizi verileriyle Favorite nesnesi oluşturuldu ---
                 val fav = Favorite(
                     streamId = seriesId,
                     streamType = "series",
                     name = currentSeriesName,
                     image = currentSeriesImage,
-                    categoryId = "0"
+                    categoryId = "0" // Dizilerde kategori ID genellikle 0 veya API'den ayrıca çekilir
                 )
                 db.favoriteDao().addFavorite(fav)
+
+                // --- YAPAY ZEKA ANALİZİ ---
+                val activeProfileId = com.bybora.smartxtream.utils.SettingsManager.getSelectedProfileId(this@SeriesDetailActivity)
+                val meta = com.bybora.smartxtream.utils.PreferenceManager.MetaDataContainer(
+                    genre = seriesGenre,
+                    cast = seriesCast,
+                    director = seriesDirector
+                )
+                com.bybora.smartxtream.utils.PreferenceManager.analyzeAndStore(
+                    applicationContext,
+                    activeProfileId,
+                    meta,
+                    com.bybora.smartxtream.utils.PreferenceManager.SCORE_FAVORITE
+                )
+                // --------------------------
+
+                // --- DÜZELTME 4: Context hatası düzeltildi (this@SeriesDetailActivity) ---
                 isFav = true
                 Toast.makeText(this@SeriesDetailActivity, getString(R.string.msg_fav_added), Toast.LENGTH_SHORT).show()
             }
@@ -196,6 +221,9 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
             putExtra("EXTRA_EXTENSION", episode.fileExtension ?: "mp4")
             putExtra("EXTRA_CATEGORY_ID", "0")
             putIntegerArrayListExtra("EXTRA_EPISODE_LIST", episodeIds)
+            putExtra("EXTRA_GENRE", seriesGenre)
+            putExtra("EXTRA_CAST", seriesCast)
+            putExtra("EXTRA_DIRECTOR", seriesDirector)
             if (episode.directSource != null) {
                 putExtra("EXTRA_DIRECT_URL", episode.directSource)
             }

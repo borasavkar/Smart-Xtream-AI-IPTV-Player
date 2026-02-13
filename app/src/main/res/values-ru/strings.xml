@@ -246,4 +246,8 @@
     <string name="desc_close_dialog">Закрыть окно</string>
     <string name="manage_profiles">Управление профилями</string>
     <string name="chose_profile_to_edit">Выберите профиль для редактирования</string>
+    <string name="title_delete_profile">Удалить профиль</string>
+    <string name="msg_confirm_delete_profile">Этот профиль будет удален. Вы уверены?</string>
+    <string name="msg_profile_deleted">Профиль удален</string>
+    <string name="msg_fill_all_fields">Пожалуйста, заполните все поля</string>
 </resources>

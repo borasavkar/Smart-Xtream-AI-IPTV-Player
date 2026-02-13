@@ -13,28 +13,23 @@ android {
         applicationId = "com.bybora.smartxtream"
         minSdk = 24
         targetSdk = 36
-        versionCode = 33
-        versionName = "1.1.33"
+        versionCode = 37
+        versionName = "1.1.37"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            // Kodları karart ve küçült (AÇIK)
             isMinifyEnabled = true
-            // Kullanılmayan kaynakları (resim/xml) sil (AÇIK)
             isShrinkResources = true
-
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // --- BURAYI EKLE ---
             ndk {
                 debugSymbolLevel = "FULL"
             }
-            // ------------------
         }
     }
     compileOptions {

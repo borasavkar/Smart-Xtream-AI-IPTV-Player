@@ -5,13 +5,16 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-// Versiyonu 8 yaptık
-@Database(entities = [Profile::class, Interaction::class, Favorite::class], version = 8, exportSchema = false)
+// DÜZELTME 1: version = 9 yapıldı ve UserPreference::class eklendi
+@Database(entities = [Profile::class, Interaction::class, Favorite::class, UserPreference::class], version = 9, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun profileDao(): ProfileDao
     abstract fun interactionDao(): InteractionDao
     abstract fun favoriteDao(): FavoriteDao
+
+    // DÜZELTME 2: DAO eklendi
+    abstract fun userPreferenceDao(): UserPreferenceDao
 
     companion object {
         @Volatile
@@ -25,11 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "bora_iptv_database"
                 )
                     .setJournalMode(JournalMode.TRUNCATE)
-                    // --- GERİ EKLİYORUZ ---
-                    // Neden? Çünkü eski sürümden gelen kullanıcıların uygulaması çökmesin.
-                    // Veritabanı yapısı değişince eski veriyi silip yenisini kurar.
                     .fallbackToDestructiveMigration(true)
-                    // ----------------------
                     .build()
                 INSTANCE = instance
                 instance
