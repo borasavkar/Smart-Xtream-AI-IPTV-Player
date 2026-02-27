@@ -250,4 +250,9 @@
     <string name="msg_confirm_delete_profile">Этот профиль будет удален. Вы уверены?</string>
     <string name="msg_profile_deleted">Профиль удален</string>
     <string name="msg_fill_all_fields">Пожалуйста, заполните все поля</string>
+    <string name="status_premium">♛ ПРЕМИУМ</string>
+    <string name="msg_clearing_cache">Очистка…</string>
+    <string name="msg_cache_cleared">Кэш очищен! 🚀</string>
+    <string name="header_recommendations_movies">Рекомендации фильмов</string>
+    <string name="header_recommendations_series">Рекомендации сериалов</string>
 </resources>

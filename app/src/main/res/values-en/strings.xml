@@ -250,4 +250,9 @@
     <string name="msg_confirm_delete_profile">This profile will be deleted. Are you sure?</string>
     <string name="msg_profile_deleted">Profile Deleted</string>
     <string name="msg_fill_all_fields">Please fill in all fields</string>
+    <string name="status_premium">♛ PREMIUM</string>
+    <string name="msg_clearing_cache">Clearing…</string>
+    <string name="msg_cache_cleared">Cache Cleared! 🚀</string>
+    <string name="header_recommendations_movies">Movie Recommendations</string>
+    <string name="header_recommendations_series">Series Recommendations</string>
 </resources>

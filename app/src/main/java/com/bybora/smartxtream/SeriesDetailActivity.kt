@@ -19,6 +19,7 @@ import com.bybora.smartxtream.database.Favorite
 import com.bybora.smartxtream.network.ApiService
 import com.bybora.smartxtream.network.Episode
 import com.bybora.smartxtream.network.RetrofitClient
+import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.launch
 
 class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
@@ -32,6 +33,10 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
     private lateinit var textInfo: TextView
     private lateinit var textPlot: TextView
     private lateinit var btnFavorite: ImageButton
+
+    // A ADIMI: Sezon Sekmeleri Değişkenleri
+    private lateinit var tabLayoutSeasons: TabLayout
+    private var allEpisodesSorted: List<Episode> = emptyList() // Player'da Sonraki Bölüm için tüm diziyi tutar
 
     // Veri
     private var serverUrl: String? = null
@@ -48,11 +53,7 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
     private var currentSeriesImage = ""
     private var seriesGenre: String = ""
     private var seriesCast: String = ""
-
-    // --- DÜZELTME 1: Tırnak hatası giderildi ---
     private var seriesDirector: String = ""
-    // -------------------------------------------
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,6 +80,9 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
         textPlot = findViewById(R.id.text_plot)
         btnFavorite = findViewById(R.id.btn_favorite_series)
 
+        // B ADIMI: Sekme Tanımı
+        tabLayoutSeasons = findViewById(R.id.tab_layout_seasons)
+
         findViewById<View>(R.id.btn_back).setOnClickListener { finish() }
         btnFavorite.setOnClickListener { toggleFavorite() }
     }
@@ -88,6 +92,10 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
         username = intent.getStringExtra("EXTRA_USERNAME")
         password = intent.getStringExtra("EXTRA_PASSWORD")
         seriesId = intent.getIntExtra("EXTRA_SERIES_ID", -1)
+
+        currentSeriesName = intent.getStringExtra("EXTRA_STREAM_NAME") ?: ""
+        currentSeriesImage = intent.getStringExtra("EXTRA_STREAM_ICON") ?: ""
+
         return !(serverUrl.isNullOrEmpty() || seriesId == -1)
     }
 
@@ -130,8 +138,35 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
                         Glide.with(this@SeriesDetailActivity).load(currentSeriesImage).into(imgBackdrop)
                     }
 
-                    val allEpisodes = episodesMap?.values?.flatten() ?: emptyList()
-                    episodeAdapter.submitList(allEpisodes)
+                    // C ADIMI: AKILLI SEZON VE SEKME (TAB) AYRIŞTIRICISI
+                    if (episodesMap != null) {
+                        // 1. Sezonları sırala (1, 2, 3...)
+                        val sortedSeasons = episodesMap.keys.sortedBy { it.toIntOrNull() ?: 0 }
+
+                        // 2. Player'ın "Sonraki Bölüm" tuşu için TÜM diziyi sırayla birleştir
+                        allEpisodesSorted = sortedSeasons.flatMap { episodesMap[it] ?: emptyList() }
+
+                        // 3. Sekmeleri oluştur
+                        tabLayoutSeasons.removeAllTabs()
+                        for (season in sortedSeasons) {
+                            tabLayoutSeasons.addTab(tabLayoutSeasons.newTab().setText("Sezon $season"))
+                        }
+
+                        // 4. Sekmeye tıklandığında sadece o sezonun bölümlerini göster
+                        tabLayoutSeasons.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+                            override fun onTabSelected(tab: TabLayout.Tab?) {
+                                val selectedSeason = sortedSeasons[tab?.position ?: 0]
+                                episodeAdapter.submitList(episodesMap[selectedSeason])
+                            }
+                            override fun onTabUnselected(tab: TabLayout.Tab?) {}
+                            override fun onTabReselected(tab: TabLayout.Tab?) {}
+                        })
+
+                        // 5. Ekran ilk açıldığında 1. sezonu göster
+                        if (sortedSeasons.isNotEmpty()) {
+                            episodeAdapter.submitList(episodesMap[sortedSeasons[0]])
+                        }
+                    }
 
                     checkFavoriteStatus()
                 }
@@ -154,22 +189,20 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
     private fun toggleFavorite() {
         lifecycleScope.launch {
             if (isFav) {
-                // --- DÜZELTME 2: 'streamId' ve 'vod' yerine 'seriesId' ve 'series' kullanıldı ---
                 db.favoriteDao().removeFavorite(seriesId, "series")
                 isFav = false
                 Toast.makeText(this@SeriesDetailActivity, getString(R.string.msg_fav_removed), Toast.LENGTH_SHORT).show()
             } else {
-                // --- DÜZELTME 3: Dizi verileriyle Favorite nesnesi oluşturuldu ---
                 val fav = Favorite(
                     streamId = seriesId,
                     streamType = "series",
                     name = currentSeriesName,
                     image = currentSeriesImage,
-                    categoryId = "0" // Dizilerde kategori ID genellikle 0 veya API'den ayrıca çekilir
+                    categoryId = "0"
                 )
                 db.favoriteDao().addFavorite(fav)
 
-                // --- YAPAY ZEKA ANALİZİ ---
+                // YAPAY ZEKA ANALİZİ
                 val activeProfileId = com.bybora.smartxtream.utils.SettingsManager.getSelectedProfileId(this@SeriesDetailActivity)
                 val meta = com.bybora.smartxtream.utils.PreferenceManager.MetaDataContainer(
                     genre = seriesGenre,
@@ -182,9 +215,7 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
                     meta,
                     com.bybora.smartxtream.utils.PreferenceManager.SCORE_FAVORITE
                 )
-                // --------------------------
 
-                // --- DÜZELTME 4: Context hatası düzeltildi (this@SeriesDetailActivity) ---
                 isFav = true
                 Toast.makeText(this@SeriesDetailActivity, getString(R.string.msg_fav_added), Toast.LENGTH_SHORT).show()
             }
@@ -209,8 +240,9 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
 
     override fun onEpisodeClick(episode: Episode) {
         val streamId = episode.id.toIntOrNull() ?: return
-        val currentList = episodeAdapter.currentList
-        val episodeIds = ArrayList(currentList.mapNotNull { it.id.toIntOrNull() })
+
+        // D ADIMI: Player'a o anki sekmeyi değil, TÜM DİZİYİ yolla
+        val episodeIds = ArrayList(allEpisodesSorted.mapNotNull { it.id.toIntOrNull() })
 
         val intent = Intent(this, PlayerActivity::class.java).apply {
             putExtra("EXTRA_SERVER_URL", serverUrl)
@@ -220,7 +252,7 @@ class SeriesDetailActivity : BaseActivity(), OnEpisodeClickListener {
             putExtra("EXTRA_STREAM_TYPE", "series")
             putExtra("EXTRA_EXTENSION", episode.fileExtension ?: "mp4")
             putExtra("EXTRA_CATEGORY_ID", "0")
-            putIntegerArrayListExtra("EXTRA_EPISODE_LIST", episodeIds)
+            putIntegerArrayListExtra("EXTRA_EPISODE_LIST", episodeIds) // Tüm bölümler gidiyor
             putExtra("EXTRA_GENRE", seriesGenre)
             putExtra("EXTRA_CAST", seriesCast)
             putExtra("EXTRA_DIRECTOR", seriesDirector)

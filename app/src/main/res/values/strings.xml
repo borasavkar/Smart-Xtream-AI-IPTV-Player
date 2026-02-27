@@ -251,4 +251,10 @@
     <string name="msg_confirm_delete_profile">Bu profil silinecek. Emin misiniz?</string>
     <string name="msg_profile_deleted">Profil Silindi</string>
     <string name="msg_fill_all_fields">Lütfen tüm alanları doldurun</string>
+    <string name="status_premium">♛ PREMIUM</string>
+    <string name="msg_clearing_cache">Temizleniyor…</string>
+    <string name="msg_cache_cleared">Önbellek Temizlendi! 🚀</string>
+    <string name="header_recommendations_movies">Film Önerileri</string>
+    <string name="header_recommendations_series">Dizi Önerileri</string>
+
 </resources>

@@ -8,7 +8,6 @@ import com.android.billingclient.api.BillingClient.ProductType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-// DÜZELTME 1: 'private val' kaldırıldı. Context sadece kurulumda lazım.
 class BillingManager(context: Context) {
 
     private val _isPremium = MutableStateFlow(false)
@@ -22,7 +21,6 @@ class BillingManager(context: Context) {
     }
 
     private val purchasesUpdatedListener = PurchasesUpdatedListener { billingResult, purchases ->
-        // DÜZELTME 5: 'if-else' zinciri yerine 'when' yapısı
         when (billingResult.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
                 purchases?.forEach { purchase ->
@@ -40,12 +38,7 @@ class BillingManager(context: Context) {
 
     private val billingClient = BillingClient.newBuilder(context)
         .setListener(purchasesUpdatedListener)
-        // BU SATIR ÖNEMLİ: Lifetime (Tek seferlik) ürünler için zorunludur.
-        // Google 'eski' dese de kullanmazsak uygulama çöker. Uyarıyı susturuyoruz:
-        .apply {
-            @Suppress("DEPRECATION")
-            enablePendingPurchases()
-        }
+        .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
         .build()
 
     fun startConnection() {
@@ -57,27 +50,21 @@ class BillingManager(context: Context) {
             }
 
             override fun onBillingServiceDisconnected() {
-                // Bağlantı koptu, gerekirse tekrar dene mekanizması eklenebilir
                 Log.e(TAG, "Billing servisi bağlantısı koptu.")
             }
         })
     }
 
     private fun checkActivePurchases() {
-        // DÜZELTME 3: Kullanılmayan 'isSubFound' değişkeni silindi.
+        val subsParams = QueryPurchasesParams.newBuilder().setProductType(ProductType.SUBS).build()
 
-        // 1. Abonelikleri Kontrol Et
-        billingClient.queryPurchasesAsync(
-            QueryPurchasesParams.newBuilder().setProductType(ProductType.SUBS).build()
-        ) { _, purchases ->
+        billingClient.queryPurchasesAsync(subsParams) { _, purchases ->
             if (purchases.isNotEmpty()) {
                 _isPremium.value = true
             }
 
-            // 2. IN-APP (Ömür Boyu) Kontrolü
-            billingClient.queryPurchasesAsync(
-                QueryPurchasesParams.newBuilder().setProductType(ProductType.INAPP).build()
-            ) { _, inAppPurchases ->
+            val inAppParams = QueryPurchasesParams.newBuilder().setProductType(ProductType.INAPP).build()
+            billingClient.queryPurchasesAsync(inAppParams) { _, inAppPurchases ->
                 if (inAppPurchases.isNotEmpty()) {
                     _isPremium.value = true
                 }
@@ -105,7 +92,6 @@ class BillingManager(context: Context) {
     fun queryProductDetails(onDetailsLoaded: (List<ProductDetails>) -> Unit) {
         val combinedList = mutableListOf<ProductDetails>()
 
-        // 1. Grup: Abonelikler (SUBS)
         val subsList = listOf(
             QueryProductDetailsParams.Product.newBuilder()
                 .setProductId(SUB_MONTHLY)
@@ -119,13 +105,13 @@ class BillingManager(context: Context) {
 
         val subsParams = QueryProductDetailsParams.newBuilder().setProductList(subsList).build()
 
-        billingClient.queryProductDetailsAsync(subsParams) { resultSubs, listSubs ->
+        // 8.3.0 ÇÖZÜMÜ: Sonuç artık QueryProductDetailsResult objesi olarak dönüyor.
+        billingClient.queryProductDetailsAsync(subsParams) { resultSubs, queryResultSubs ->
             if (resultSubs.responseCode == BillingClient.BillingResponseCode.OK) {
-                // DÜZELTME 4: Gereksiz '?.' (safe call) kaldırıldı
-                listSubs.let { combinedList.addAll(it) }
+                // Kutuyu açıp içindeki listeyi (productDetailsList) güvenli bir şekilde alıyoruz
+                queryResultSubs.productDetailsList?.let { combinedList.addAll(it) }
             }
 
-            // 2. Grup: Tek Seferlik (INAPP) - Ömür Boyu
             val inAppList = listOf(
                 QueryProductDetailsParams.Product.newBuilder()
                     .setProductId(LIFETIME)
@@ -135,10 +121,10 @@ class BillingManager(context: Context) {
 
             val inAppParams = QueryProductDetailsParams.newBuilder().setProductList(inAppList).build()
 
-            billingClient.queryProductDetailsAsync(inAppParams) { resultInApp, listInApp ->
+            billingClient.queryProductDetailsAsync(inAppParams) { resultInApp, queryResultInApp ->
                 if (resultInApp.responseCode == BillingClient.BillingResponseCode.OK) {
-                    // DÜZELTME 4: Burada da kaldırıldı
-                    listInApp.let { combinedList.addAll(it) }
+                    // Aynı şekilde inApp listesini de kutudan çıkarıyoruz
+                    queryResultInApp.productDetailsList?.let { combinedList.addAll(it) }
                 }
                 onDetailsLoaded(combinedList)
             }

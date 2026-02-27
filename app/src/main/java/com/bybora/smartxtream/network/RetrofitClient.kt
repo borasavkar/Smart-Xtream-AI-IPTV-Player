@@ -109,16 +109,39 @@ object RetrofitClient {
 
     fun createService(baseUrl: String): ApiService {
         var cleanUrl = baseUrl.trim()
-        if (!cleanUrl.startsWith("http")) cleanUrl = "http://$cleanUrl"
-        if (!cleanUrl.endsWith("/")) cleanUrl += "/"
 
-        if (retrofit == null || retrofit?.baseUrl().toString() != cleanUrl) {
-            retrofit = Retrofit.Builder()
-                .baseUrl(cleanUrl)
+        // Boş veya tamamen hatalı girişlere karşı son çare koruması
+        if (cleanUrl.isBlank() || cleanUrl == "http://" || cleanUrl == "https://") {
+            cleanUrl = "http://localhost/" // Çökmeyi önlemek için geçici (dummy) bir adres atıyoruz
+            Log.e("API_LOG", "Geçersiz veya boş URL engellendi. Geçici adrese yönlendirildi.")
+        } else {
+            if (!cleanUrl.startsWith("http")) cleanUrl = "http://$cleanUrl"
+            if (!cleanUrl.endsWith("/")) cleanUrl += "/"
+
+            // Kullanıcının arada unuttuğu tehlikeli boşlukları (space) tamamen temizle
+            cleanUrl = cleanUrl.replace(" ", "")
+        }
+
+        // Eğer URL hala geçerli (parse edilebilir) değilse çökmeyi yakala (Try-Catch)
+        return try {
+            if (retrofit == null || retrofit?.baseUrl().toString() != cleanUrl) {
+                retrofit = Retrofit.Builder()
+                    .baseUrl(cleanUrl)
+                    .client(okHttpClient)
+                    .addConverterFactory(MoshiConverterFactory.create(moshi).asLenient())
+                    .build()
+            }
+            retrofit!!.create(ApiService::class.java)
+        } catch (e: Exception) {
+            Log.e("API_LOG", "Kritik URL Hatası (Kullanıcı saçma bir adres girmiş): $cleanUrl", e)
+            // Çökmek yerine uygulamayı hayatta tutacak sahte bir servis oluştur.
+            // Ağ isteği atarken doğal bir "Sunucuya bağlanılamadı" hatası (UnknownHostException) verecek.
+            Retrofit.Builder()
+                .baseUrl("http://localhost/")
                 .client(okHttpClient)
                 .addConverterFactory(MoshiConverterFactory.create(moshi).asLenient())
                 .build()
+                .create(ApiService::class.java)
         }
-        return retrofit!!.create(ApiService::class.java)
     }
 }

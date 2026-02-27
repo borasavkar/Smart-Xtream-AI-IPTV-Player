@@ -13,8 +13,8 @@ android {
         applicationId = "com.bybora.smartxtream"
         minSdk = 24
         targetSdk = 36
-        versionCode = 37
-        versionName = "1.1.37"
+        versionCode = 40
+        versionName = "1.2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

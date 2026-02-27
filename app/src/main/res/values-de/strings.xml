@@ -250,4 +250,9 @@
     <string name="msg_confirm_delete_profile">Dieses Profil wird gelöscht. Sind Sie sicher?</string>
     <string name="msg_profile_deleted">Profil gelöscht</string>
     <string name="msg_fill_all_fields">Bitte füllen Sie alle Felder aus</string>
+    <string name="status_premium">♛ PREMIUM</string>
+    <string name="msg_clearing_cache">Wird gereinigt…</string>
+    <string name="msg_cache_cleared">Cache geleert! 🚀</string>
+    <string name="header_recommendations_movies">Filmempfehlungen</string>
+    <string name="header_recommendations_series">Serienempfehlungen</string>
 </resources>

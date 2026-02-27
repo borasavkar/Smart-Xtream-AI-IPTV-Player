@@ -85,6 +85,10 @@ class FilmDetailActivity : BaseActivity() {
         findViewById<View>(R.id.btn_back).setOnClickListener { finish() }
         btnPlay.setOnClickListener { playMovie() }
         btnFavorite.setOnClickListener { toggleFavorite() }
+        btnPlay.post {
+            btnPlay.requestFocus()
+            btnPlay.sendAccessibilityEvent(android.view.accessibility.AccessibilityEvent.TYPE_VIEW_FOCUSED)
+        }
     }
 
     private fun getIntentData(): Boolean {
@@ -97,7 +101,6 @@ class FilmDetailActivity : BaseActivity() {
 
     private fun fetchMovieDetails() {
         progressBar.visibility = View.VISIBLE
-
         lifecycleScope.launch {
             try {
                 val apiService = RetrofitClient.createService(serverUrl!!)

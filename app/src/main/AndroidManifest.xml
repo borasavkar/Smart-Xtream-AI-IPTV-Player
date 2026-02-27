@@ -62,7 +62,6 @@
             android:exported="false"
             android:screenOrientation="unspecified"
             tools:ignore="DiscouragedApi" />
-
     </application>
 
 </manifest>

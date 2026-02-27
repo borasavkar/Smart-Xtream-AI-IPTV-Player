@@ -251,4 +251,9 @@
     <string name="msg_confirm_delete_profile">سيتم حذف هذا الملف الشخصي. هل أنت متأكد؟</string>
     <string name="msg_profile_deleted">تم حذف الملف الشخصي</string>
     <string name="msg_fill_all_fields">يرجى ملء جميع الحقول</string>
+    <string name="status_premium">♛ بريميوم</string>
+    <string name="msg_clearing_cache">جاري التنظيف…</string>
+    <string name="msg_cache_cleared">تم مسح ذاكرة التخزين المؤقت! 🚀</string>
+    <string name="header_recommendations_movies">توصيات الأفلام</string>
+    <string name="header_recommendations_series">توصيات المسلسلات</string>
 </resources>

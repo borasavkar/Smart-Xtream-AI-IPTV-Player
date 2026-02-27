@@ -136,6 +136,21 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"/>
 
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tab_layout_seasons"
+            style="@style/Widget.MaterialComponents.TabLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@android:color/transparent"
+            app:tabMode="scrollable"
+            app:tabTextColor="#BBDEFB"
+            app:tabSelectedTextColor="@color/neon_green"
+            app:tabIndicatorColor="@color/neon_green"
+            app:layout_constraintTop_toBottomOf="@id/text_episodes_header"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_view_episodes"
             android:layout_width="match_parent"
@@ -144,7 +159,7 @@
             android:paddingBottom="8dp"
             android:clipToPadding="false"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            app:layout_constraintTop_toBottomOf="@id/text_episodes_header"
+            app:layout_constraintTop_toBottomOf="@id/tab_layout_seasons"
             app:layout_constraintBottom_toBottomOf="parent"/>
 
         <ProgressBar

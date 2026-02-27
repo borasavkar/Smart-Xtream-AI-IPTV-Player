@@ -2,6 +2,7 @@ package com.bybora.smartxtream.utils
 
 import com.bybora.smartxtream.database.Favorite
 import com.bybora.smartxtream.database.Interaction
+import com.bybora.smartxtream.database.UserPreference // 👈 EKSİK OLAN IMPORT EKLENDİ
 import com.bybora.smartxtream.network.SeriesStream
 import com.bybora.smartxtream.network.VodStream
 import java.util.Locale
@@ -12,12 +13,13 @@ object RecommendationEngine {
     private val STOP_WORDS = setOf("the", "a", "an", "ve", "veya", "ile", "bir", "film", "dizi", "izle", "tr", "eng", "dublaj", "altyazı", "hd", "4k", "part", "bolum")
 
     /**
-     * FİLM ÖNERİ ALGORİTMASI (Favori + Geçmiş + Puan)
+     * FİLM ÖNERİ ALGORİTMASI (Favori + Geçmiş + YAPAY ZEKA)
      */
     fun recommendMovies(
         allMovies: List<VodStream>,
         userHistory: List<Interaction>,
-        userFavorites: List<Favorite>, // --- YENİ PARAMETRE ---
+        userFavorites: List<Favorite>,
+        userPreferences: List<UserPreference>, // 👈 YAPAY ZEKA VERİSİ
         topCategoryId: String?,
         excludedIds: Set<Int>,
         limit: Int = 15
@@ -26,33 +28,27 @@ object RecommendationEngine {
         val candidates = allMovies.filter { movie ->
             if (movie.streamId in excludedIds) return@filter false
             if (userHistory.any { it.streamId == movie.streamId && it.streamType == "vod" }) return@filter false
-            // --- 3. YENİ: Zaten FAVORİLERDE varsa önerme ---
             if (userFavorites.any { it.streamId == movie.streamId && it.streamType == "vod" }) return@filter false
             !isAdultContent(movie.name)
         }
 
-        // --- ANALİZ ---
-        // 1. İzlenenlerden kelime çıkar
         val historyKeywords = extractKeywordsFromHistory(userHistory, "vod")
-        // 2. Favorilerden kelime çıkar (YENİ GÜÇ)
         val favoriteKeywords = extractKeywordsFromFavorites(userFavorites, "vod")
-
-        // Birleşik Havuz (Favorilerin etkisi x2 olsun diye ayrı tutabiliriz ama birleştirmek yeterli)
         val allInterestKeywords = historyKeywords + favoriteKeywords
 
         val scoredMovies = candidates.map { movie ->
             var score = 0.0
+            val movieName = movie.name?.lowercase() ?: ""
 
-            // A. Kategori Uyumu (40 Puan)
+            // A. Kategori Uyumu
             if (movie.categoryId == topCategoryId) score += 40.0
 
-            // B. Kelime Benzerliği (İsimden Yakala)
+            // B. Kelime Benzerliği
             val movieKeywords = tokenize(movie.name)
             val matchCount = movieKeywords.count { it in allInterestKeywords }
-            score += (matchCount * 12.0) // Kelime başı puanı artırdık
+            score += (matchCount * 12.0)
 
-            // C. Favori Kategorisi Bonusu (YENİ)
-            // Eğer bu film, favorilerimdeki bir filmle aynı kategorideyse +20 Puan
+            // C. Favori Kategorisi Bonusu
             if (userFavorites.any { it.categoryId == movie.categoryId }) {
                 score += 20.0
             }
@@ -62,6 +58,14 @@ object RecommendationEngine {
             val addedTime = movie.added?.toLongOrNull() ?: 0L
             if (addedTime > (System.currentTimeMillis() / 1000 - 2592000)) score += 20.0
 
+            // E. YAPAY ZEKA (KİŞİSEL ZEVKLER) ENTEGRASYONU 🧠
+            userPreferences.forEach { pref ->
+                val keyword = pref.keyword.lowercase()
+                if (movieName.contains(keyword)) {
+                    score += (pref.score * 0.8)
+                }
+            }
+
             Pair(movie, score)
         }
 
@@ -69,28 +73,22 @@ object RecommendationEngine {
     }
 
     /**
-     * DİZİ ÖNERİ ALGORİTMASI
+     * DİZİ ÖNERİ ALGORİTMASI (Favori + Geçmiş + YAPAY ZEKA)
      */
     fun recommendSeries(
         allSeries: List<SeriesStream>,
         userHistory: List<Interaction>,
-        userFavorites: List<Favorite>, // --- YENİ PARAMETRE ---
+        userFavorites: List<Favorite>,
+        userPreferences: List<UserPreference>, // 👈 DİZİLER İÇİN DE EKLENDİ
         topCategoryId: String?,
         excludedIds: Set<Int>,
         limit: Int = 10
     ): List<SeriesStream> {
 
         val candidates = allSeries.filter { series ->
-            // 1. Zaten ekranda varsa önerme
             if (series.seriesId in excludedIds) return@filter false
-
-            // 2. Adult ise önerme
             if (isAdultContent(series.name)) return@filter false
-
-            // --- 3. YENİ: Zaten FAVORİLERDE varsa önerme ---
             if (userFavorites.any { it.streamId == series.seriesId && it.streamType == "series" }) return@filter false
-            // ----------------------------------------------
-
             true
         }
 
@@ -100,15 +98,24 @@ object RecommendationEngine {
 
         val scoredSeries = candidates.map { series ->
             var score = 0.0
+            val seriesName = series.name?.lowercase() ?: ""
 
             if (series.categoryId == topCategoryId) score += 40.0
 
             val keywords = tokenize(series.name)
             score += (keywords.count { it in allInterestKeywords } * 12.0)
 
-            if (userFavorites.any { it.categoryId == series.categoryId }) score += 20.0 // Favori Kategori Bonusu
+            if (userFavorites.any { it.categoryId == series.categoryId }) score += 20.0
 
             score += (series.rating) * 5.0
+
+            // YAPAY ZEKA ENTEGRASYONU (Diziler için)
+            userPreferences.forEach { pref ->
+                val keyword = pref.keyword.lowercase()
+                if (seriesName.contains(keyword)) {
+                    score += (pref.score * 0.8)
+                }
+            }
 
             Pair(series, score)
         }
@@ -138,7 +145,6 @@ object RecommendationEngine {
         return keywords
     }
 
-    // YENİ: Favorilerden kelime çıkarma
     private fun extractKeywordsFromFavorites(favorites: List<Favorite>, type: String): Set<String> {
         val keywords = mutableSetOf<String>()
         favorites.filter { it.streamType == type }.forEach { fav ->
@@ -149,8 +155,6 @@ object RecommendationEngine {
 
     private fun tokenize(text: String?): List<String> {
         if (text.isNullOrEmpty()) return emptyList()
-
-        // HATA DÜZELTİLDİ: Locale.TURKISH yerine Locale.forLanguageTag("tr")
         return text.lowercase(Locale.forLanguageTag("tr"))
             .replace(Regex("[^a-z0-9ğüşıöç ]"), " ")
             .split(" ")

@@ -35,19 +35,19 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import java.util.Calendar
 import android.util.Log
 import kotlinx.coroutines.async
 import com.bybora.smartxtream.database.Favorite
 import com.bybora.smartxtream.database.Interaction
+import com.bybora.smartxtream.database.UserPreference
+import androidx.activity.enableEdgeToEdge
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 class MainActivity : BaseActivity(), OnChannelClickListener {
 
     private val db by lazy { AppDatabase.getInstance(this) }
     private val profileDao by lazy { db.profileDao() }
-    private val favoriteDao by lazy { db.favoriteDao() }
-
-    private val yearRegex = "(19|20)\\d{2}".toRegex()
 
     // UI
     private lateinit var buttonAddProfile: MaterialButton
@@ -57,11 +57,9 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     private lateinit var textConnectionStatus: TextView
     private lateinit var textExpirationDate: TextView
     private lateinit var progressBar: ProgressBar
-    // --- YENİ EKLENENLER ---
     private lateinit var textSubStatus: TextView
     private lateinit var textTrialCounter: TextView
     private lateinit var billingManager: com.bybora.smartxtream.utils.BillingManager
-    // -----------------------
 
     // Kartlar
     private lateinit var cardTv: View
@@ -71,59 +69,133 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     // Listeler
     private lateinit var recyclerFavorites: RecyclerView
     private lateinit var titleFavorites: TextView
-    private lateinit var recyclerMatches: RecyclerView
-    private lateinit var titleMatches: TextView
-    private lateinit var recyclerRecommendations: RecyclerView
-    private lateinit var titleRecommendations: TextView
+    private lateinit var favoritesAdapter: ChannelAdapter
+
+    private lateinit var recyclerRecMovies: RecyclerView
+    private lateinit var titleRecMovies: TextView
+    private lateinit var recMoviesAdapter: ChannelAdapter
+
+    private lateinit var recyclerRecSeries: RecyclerView
+    private lateinit var titleRecSeries: TextView
+    private lateinit var recSeriesAdapter: ChannelAdapter
+
     private lateinit var recyclerLatest: RecyclerView
     private lateinit var titleLatest: TextView
-
-    // Adapters
-    private lateinit var favAdapter: ChannelAdapter
-    private lateinit var matchAdapter: ChannelAdapter
-    private lateinit var recAdapter: ChannelAdapter
     private lateinit var latestAdapter: ChannelAdapter
 
     private var activeProfile: Profile? = null
     private var allProfiles: List<Profile> = emptyList()
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
-        // 1. Önce Arayüzü Yükle (ki Loading gösterebilelim)
         setContentView(R.layout.activity_main)
+
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content)) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            insets
+        }
+
         initViews()
+        setupFocusAnimations()
 
-        // 2. Yükleniyor işaretini aç
         progressBar.visibility = View.VISIBLE
-        // --- YENİ EKLENEN: Deneme Sayacı Başlat ---
         setupSubscriptionStatus()
-
-        // 3. Lisans ve Deneme Kontrolünü Başlat
         checkLicenseAndStart()
     }
-    // --- BU FONKSİYONU SINIFIN İÇİNE KOPYALA ---
+
+    override fun onResume() {
+        super.onResume()
+        activeProfile?.let { profile ->
+            lifecycleScope.launch(Dispatchers.IO) {
+                val userFavs = try { db.favoriteDao().getAllFavoritesSync() } catch (e: Exception) { emptyList<Favorite>() }
+                val favList = ArrayList<ChannelWithEpg>()
+
+                userFavs.reversed().take(15).forEach { fav ->
+                    val titleType = when (fav.streamType) {
+                        "series" -> getString(R.string.type_series)
+                        "vod", "movie" -> getString(R.string.type_movie)
+                        else -> ""
+                    }
+                    favList.add(ChannelWithEpg(
+                        LiveStream(fav.streamId, fav.name, fav.image, ""),
+                        if (titleType.isNotEmpty()) EpgListing("0", "0", titleType, "", "", "") else null
+                    ))
+                }
+
+                withContext(Dispatchers.Main) {
+                    if (favList.isNotEmpty()) {
+                        favoritesAdapter.submitList(favList)
+                        titleFavorites.visibility = View.VISIBLE
+                        recyclerFavorites.visibility = View.VISIBLE
+                    } else {
+                        titleFavorites.visibility = View.GONE
+                        recyclerFavorites.visibility = View.GONE
+                    }
+                }
+            }
+        }
+    }
+
+    private fun setupFocusAnimations() {
+        val cardFocusListener = View.OnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) {
+                v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(200).start()
+                v.elevation = 12f
+            } else {
+                v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(200).start()
+                v.elevation = 0f
+            }
+        }
+
+        val buttonFocusListener = View.OnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) {
+                v.animate().scaleX(1.15f).scaleY(1.15f).setDuration(200).start()
+                v.elevation = 12f
+                v.setBackgroundResource(R.drawable.bg_card_selector)
+            } else {
+                v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(200).start()
+                v.elevation = 0f
+                v.setBackgroundResource(android.R.color.transparent)
+            }
+        }
+
+        btnFavorites.isFocusable = true
+        btnGlobalSettings.isFocusable = true
+        textStatusProfileName.isFocusable = true
+
+        btnFavorites.onFocusChangeListener = buttonFocusListener
+        btnGlobalSettings.onFocusChangeListener = buttonFocusListener
+        textStatusProfileName.onFocusChangeListener = buttonFocusListener
+
+        buttonAddProfile.isFocusable = true
+        buttonAddProfile.onFocusChangeListener = cardFocusListener
+
+        cardTv.isFocusable = true
+        cardFilms.isFocusable = true
+        cardSeries.isFocusable = true
+
+        cardTv.onFocusChangeListener = cardFocusListener
+        cardFilms.onFocusChangeListener = cardFocusListener
+        cardSeries.onFocusChangeListener = cardFocusListener
+    }
+
     private fun setupSubscriptionStatus() {
-        // BillingManager başlatılmamışsa başlat
         if (!::billingManager.isInitialized) {
             billingManager = com.bybora.smartxtream.utils.BillingManager(this)
             billingManager.startConnection()
         }
 
         lifecycleScope.launch {
-            // 1. ÖNCE PREMIUM KONTROLÜ (En önemlisi)
             billingManager.isPremium.collect { isPremium ->
                 runOnUiThread {
                     if (isPremium) {
-                        // --- DURUM 1: SATIN ALMIŞ (PREMIUM) ---
-                        textSubStatus.text = "♛ PREMIUM"
-                        textSubStatus.setTextColor(android.graphics.Color.parseColor("#FF1744")) // Şık Neon Kırmızı
-                        // İstersen gölge efekti de verebilirsin:
+                        textSubStatus.text = getString(R.string.status_premium)
+                        textSubStatus.setTextColor(android.graphics.Color.parseColor("#FF1744"))
                         textSubStatus.setShadowLayer(10f, 0f, 0f, android.graphics.Color.RED)
                         textSubStatus.visibility = View.VISIBLE
                     } else {
-                        // --- DURUM 2: SATIN ALMAMIŞ -> DENEME SÜRESİNE BAK ---
                         checkTrialStatus()
                     }
                 }
@@ -136,14 +208,11 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
             override fun onCheckResult(isActive: Boolean, message: String) {
                 runOnUiThread {
                     if (isActive) {
-                        // Deneme Devam Ediyor -> SARI
-                        // message içeriği örn: "Deneme: 5 Gün Kaldı"
                         textSubStatus.text = message
-                        textSubStatus.setTextColor(android.graphics.Color.parseColor("#FFEB3B")) // Sarı
-                        textSubStatus.setShadowLayer(0f, 0f, 0f, 0) // Gölgeyi kapat
+                        textSubStatus.setTextColor(android.graphics.Color.parseColor("#FFEB3B"))
+                        textSubStatus.setShadowLayer(0f, 0f, 0f, 0)
                         textSubStatus.visibility = View.VISIBLE
                     } else {
-                        // Deneme Bitmiş -> GİZLE veya "Süre Doldu" yaz
                         textSubStatus.visibility = View.GONE
                     }
                 }
@@ -152,23 +221,18 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     }
 
     private fun checkLicenseAndStart() {
-        // A. Premium Kontrolü (Hızlı, Yerel)
         val isPremium = SettingsManager.isPremiumUser(this)
 
         if (isPremium) {
-            // Premium kullanıcı ise bekletmeden başlat
             initAppContent()
         } else {
-            // B. Deneme Kontrolü (Sunucu Tabanlı, Asenkron)
             TrialManager.checkTrialOnServer(this, object : TrialManager.TrialCheckListener {
                 override fun onCheckResult(isActive: Boolean, message: String) {
                     if (isActive) {
-                        // Deneme süresi devam ediyor, başlat
                         initAppContent()
                     } else {
-                        // Süre Bitmiş -> Abonelik Ekranına Yönlendir
                         progressBar.visibility = View.GONE
-                        Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show() // Mesaj TrialManager'dan (dil destekli) gelir
+                        Toast.makeText(this@MainActivity, message, Toast.LENGTH_LONG).show()
                         startActivity(Intent(this@MainActivity, SubscriptionActivity::class.java))
                         finish()
                     }
@@ -177,22 +241,10 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         }
     }
 
-    // Lisans onayı alındıktan sonra çalışacak asıl kodlar
     private fun initAppContent() {
-        // --- OTOMATİK BAKIM ---
-        lifecycleScope.launch(Dispatchers.IO) {
-            val cacheDir = cacheDir
-            // Eğer Cache 500 MB'dan büyükse temizle
-            if (com.bybora.smartxtream.utils.SmartCacheManager.getCacheSize(this@MainActivity).contains("MB")) {
-                // Basit bir kontrol: getDirSize fonksiyonunu public yapıp byte olarak kontrol etmek daha net olur ama string kontrolü de iş görür
-                // Veya direkt her açılışta temizle (IPTV için en sağlıklısı budur, çünkü logolar değişebilir)
-                // com.bybora.smartxtream.utils.SmartCacheManager.clearCache(this@MainActivity) {}
-            }
-        }
         setupRecyclers()
         setupDashboardCards()
         setupClickListeners()
-        observeFavorites()
         observeProfiles()
     }
 
@@ -227,11 +279,9 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
 
         lifecycleScope.launch {
             try {
-                // URL DÜZELTME (Çok Önemli): Retrofit sonu '/' ile bitmeyen URL'leri sevmez.
                 var cleanUrl = profile.serverUrl.trim()
-                if (!cleanUrl.endsWith("/")) {
-                    cleanUrl += "/"
-                }
+                if (!cleanUrl.endsWith("/")) cleanUrl += "/"
+
                 val apiService = RetrofitClient.createService(profile.serverUrl)
                 val response = apiService.authenticate(profile.username, profile.password)
                 if (response.isSuccessful && response.body()?.userInfo?.auth == 1) {
@@ -245,32 +295,11 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                 }
             } catch (e: Exception) {
                 textConnectionStatus.setText(R.string.status_server_error)
-                // HATA DETAYINI GÖRMEK İÇİN:
-                val errorMsg = e.message ?: "Bilinmeyen Hata"
-                Log.e("MainActivity", "Connection Error: $errorMsg")
-
-                // Kullanıcıya hatanın sebebini gösterelim (Geçici olarak)
-                textConnectionStatus.text = "Hata: $errorMsg"
+                val errorMsg = e.message ?: getString(R.string.error_unknown)
+                textConnectionStatus.text = getString(R.string.error_generic_prefix, errorMsg)
                 textConnectionStatus.setTextColor(getColor(android.R.color.holo_red_dark))
             }
         }
-    }
-
-    private fun deleteProfile(profile: Profile) {
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.btn_delete))
-            .setMessage(getString(R.string.msg_confirm_delete))
-            .setPositiveButton(getString(R.string.btn_yes)) { _, _ ->
-                lifecycleScope.launch {
-                    if (activeProfile?.id == profile.id) {
-                        ContentCache.clear()
-                        clearBottomBar()
-                    }
-                    profileDao.deleteProfile(profile)
-                }
-            }
-            .setNegativeButton(getString(R.string.btn_cancel), null)
-            .show()
     }
 
     private fun initViews() {
@@ -281,10 +310,8 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         textConnectionStatus = findViewById(R.id.text_connection_status)
         textExpirationDate = findViewById(R.id.text_expiration_date)
         progressBar = findViewById(R.id.home_loader)
-        // --- YENİ EKLENEN ---
         textTrialCounter = findViewById(R.id.text_trial_counter)
         textSubStatus = findViewById(R.id.text_sub_status)
-        // --------------------
 
         cardTv = findViewById(R.id.card_tv)
         cardFilms = findViewById(R.id.card_films)
@@ -292,26 +319,27 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
 
         recyclerFavorites = findViewById(R.id.recycler_favorites_home)
         titleFavorites = findViewById(R.id.title_favorites)
-        recyclerMatches = findViewById(R.id.recycler_matches)
-        titleMatches = findViewById(R.id.title_matches)
-        recyclerRecommendations = findViewById(R.id.recycler_recommendations)
-        titleRecommendations = findViewById(R.id.title_recommendations)
+
         recyclerLatest = findViewById(R.id.recycler_latest)
         titleLatest = findViewById(R.id.title_latest)
+        recyclerRecMovies = findViewById(R.id.recycler_recommended_movies)
+        titleRecMovies = findViewById(R.id.title_recommended_movies)
+        recyclerRecSeries = findViewById(R.id.recycler_recommended_series)
+        titleRecSeries = findViewById(R.id.title_recommended_series)
     }
 
     private fun setupRecyclers() {
-        favAdapter = ChannelAdapter(this, R.layout.item_movie_card)
+        favoritesAdapter = ChannelAdapter(this, R.layout.item_movie_card)
         recyclerFavorites.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        recyclerFavorites.adapter = favAdapter
+        recyclerFavorites.adapter = favoritesAdapter
 
-        matchAdapter = ChannelAdapter(this, R.layout.item_movie_card)
-        recyclerMatches.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        recyclerMatches.adapter = matchAdapter
+        recMoviesAdapter = ChannelAdapter(this, R.layout.item_movie_card)
+        recyclerRecMovies.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerRecMovies.adapter = recMoviesAdapter
 
-        recAdapter = ChannelAdapter(this, R.layout.item_movie_card)
-        recyclerRecommendations.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        recyclerRecommendations.adapter = recAdapter
+        recSeriesAdapter = ChannelAdapter(this, R.layout.item_movie_card)
+        recyclerRecSeries.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerRecSeries.adapter = recSeriesAdapter
 
         latestAdapter = ChannelAdapter(this, R.layout.item_movie_card)
         recyclerLatest.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -355,7 +383,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
     }
 
     private fun showGlobalSettingsDialog() {
-        // Mevcut dil ayarları...
         val langOptions = arrayOf("Türkçe", "English", "Deutsch", "Français", "Russian", "Arabic","Español", "Português")
         val langCodes = arrayOf("tr", "en", "de", "fr", "ru", "ar","es", "pt")
         val audioCode = SettingsManager.getAudioLang(this)
@@ -363,79 +390,115 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         val audioName = langCodes.indexOf(audioCode).let { if(it == -1) "Türkçe" else langOptions[it] }
         val subName = langCodes.indexOf(subCode).let { if(it == -1) "Türkçe" else langOptions[it] }
 
-        // --- YENİ: CACHE BOYUTUNU HESAPLA ---
         val currentCacheSize = com.bybora.smartxtream.utils.SmartCacheManager.getCacheSize(this)
 
         val menuItems = arrayOf(
             "${getString(R.string.settings_default_audio)}: $audioName",
             "${getString(R.string.settings_default_subtitle)}: $subName",
             getString(R.string.menu_refresh),
-            // --- YENİ SEÇENEK ---
             "Önbelleği Temizle ($currentCacheSize)"
         )
 
-        AlertDialog.Builder(this)
-            .setTitle(getString(R.string.settings_title))
-            .setItems(menuItems) { _, which ->
-                when (which) {
-                    0 -> showSelectionDialog(getString(R.string.settings_audio_lang), langOptions) { idx -> SettingsManager.setAudioLang(this, langCodes[idx]) }
-                    1 -> showSelectionDialog(getString(R.string.settings_subtitle_lang), langOptions) { idx -> SettingsManager.setSubtitleLang(this, langCodes[idx]) }
-                    2 -> {
-                        ContentCache.clear()
-                        if(activeProfile!=null) loadAllContent(activeProfile!!)
-                        Toast.makeText(this, getString(R.string.msg_refreshing), Toast.LENGTH_SHORT).show()
-                    }
-                    // --- TEMİZLİK İŞLEMİ ---
-                    3 -> {
-                        Toast.makeText(this, "Temizleniyor...", Toast.LENGTH_SHORT).show()
-                        com.bybora.smartxtream.utils.SmartCacheManager.clearCache(this) {
-                            Toast.makeText(this, "Önbellek Temizlendi! 🚀", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+        showCustomGlassMenu(getString(R.string.settings_title), menuItems) { which ->
+            when (which) {
+                0 -> showSelectionDialog(getString(R.string.settings_audio_lang), langOptions) { idx -> SettingsManager.setAudioLang(this, langCodes[idx]) }
+                1 -> showSelectionDialog(getString(R.string.settings_subtitle_lang), langOptions) { idx -> SettingsManager.setSubtitleLang(this, langCodes[idx]) }
+                2 -> {
+                    ContentCache.clear()
+                    if(activeProfile!=null) loadAllContent(activeProfile!!)
+                    Toast.makeText(this, getString(R.string.msg_refreshing), Toast.LENGTH_SHORT).show()
                 }
-            }
-            .setPositiveButton(getString(R.string.btn_ok), null)
-            .show()
-    }
-
-    private fun showSelectionDialog(title: String, items: Array<String>, onSelected: (Int) -> Unit) {
-        AlertDialog.Builder(this)
-            .setTitle(title)
-            .setItems(items) { _, which ->
-                onSelected(which)
-                Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
-                showGlobalSettingsDialog()
-            }
-            .show()
-    }
-
-    private fun observeFavorites() {
-        lifecycleScope.launch {
-            favoriteDao.getAllFavorites().collectLatest { favList ->
-                val mappedFavs = withContext(Dispatchers.Default) {
-                    val safeFavList = favList.filter { isSafeContent(it.name) }
-                    safeFavList.map { fav ->
-                        val stream = LiveStream(fav.streamId, fav.name, fav.image, fav.categoryId)
-                        val typeLabel = when(fav.streamType) {
-                            "vod" -> getString(R.string.type_movie)
-                            "series" -> getString(R.string.type_series)
-                            else -> getString(R.string.type_live)
-                        }
-                        ChannelWithEpg(stream, EpgListing("0", "0", typeLabel, "", "", ""))
+                3 -> {
+                    Toast.makeText(this, getString(R.string.msg_clearing_cache), Toast.LENGTH_SHORT).show()
+                    com.bybora.smartxtream.utils.SmartCacheManager.clearCache(this) {
+                        Toast.makeText(this, getString(R.string.msg_cache_cleared), Toast.LENGTH_SHORT).show()
                     }
-                }
-
-                if (mappedFavs.isNotEmpty()) {
-                    favAdapter.submitList(mappedFavs)
-                    titleFavorites.visibility = View.VISIBLE
-                    recyclerFavorites.visibility = View.VISIBLE
-                } else {
-                    titleFavorites.visibility = View.GONE
-                    recyclerFavorites.visibility = View.GONE
-                    favAdapter.submitList(emptyList())
                 }
             }
         }
+    }
+
+    private fun showSelectionDialog(title: String, items: Array<String>, onSelected: (Int) -> Unit) {
+        showCustomGlassMenu(title, items) { which ->
+            onSelected(which)
+            Toast.makeText(this, getString(R.string.settings_saved), Toast.LENGTH_SHORT).show()
+            showGlobalSettingsDialog()
+        }
+    }
+
+    // YENİ FONKSİYON: Ayarlar menüsünü Liquid Glass (Cam) tasarımında ve animasyonlu çizer
+    private fun showCustomGlassMenu(title: String, items: Array<String>, onItemClick: (Int) -> Unit) {
+        val context = this
+        val container = android.widget.LinearLayout(context).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(48, 48, 48, 48)
+        }
+
+        val titleView = android.widget.TextView(context).apply {
+            text = title
+            textSize = 22f
+            setTextColor(android.graphics.Color.WHITE)
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            gravity = android.view.Gravity.CENTER
+            setPadding(0, 0, 0, 48)
+        }
+        container.addView(titleView)
+
+        val scrollView = android.widget.ScrollView(context)
+        val listContainer = android.widget.LinearLayout(context).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+        }
+
+        val layoutParams = android.widget.LinearLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            setMargins(0, 0, 0, 24)
+        }
+
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(context)
+            .setView(container)
+            .setCancelable(true)
+            .create()
+
+        // Arka planı şeffaf ve %85 karanlık yapıyoruz
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        dialog.window?.setDimAmount(0.85f)
+
+        items.forEachIndexed { index, itemText ->
+            val btn = android.widget.Button(context).apply {
+                text = itemText
+                textSize = 16f
+                setTextColor(android.graphics.Color.WHITE)
+                isFocusable = true
+                isAllCaps = false // Metinlerin tamamının BÜYÜK HARF olmasını engeller
+                setBackgroundResource(R.drawable.selector_glass_button_green) // Profil ekranındaki cam tasarımı!
+                backgroundTintList = null
+                this.layoutParams = layoutParams
+
+                // Kumanda ile üstüne gelince Netflix tarzı büyüme efekti
+                onFocusChangeListener = android.view.View.OnFocusChangeListener { v, hasFocus ->
+                    if (hasFocus) {
+                        v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(200).start()
+                        v.elevation = 12f
+                    } else {
+                        v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(200).start()
+                        v.elevation = 0f
+                    }
+                }
+
+                setOnClickListener {
+                    dialog.dismiss()
+                    onItemClick(index)
+                }
+            }
+            listContainer.addView(btn)
+        }
+
+        scrollView.addView(listContainer)
+        container.addView(scrollView)
+
+        dialog.show()
     }
 
     private fun loadAllContent(profile: Profile) {
@@ -443,17 +506,15 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
 
         lifecycleScope.launch {
             try {
-                // 1. VERİLERİ ÇEK (GEÇMİŞ + FAVORİLER EKLENDİ)
-                val (channels, movies, series, epgList, history, favorites) = withContext(Dispatchers.IO) {
+                val dataPackage = withContext(Dispatchers.IO) {
                     var ch: List<LiveStream> = emptyList()
                     var mv: List<VodStream> = emptyList()
                     var sr: List<SeriesStream> = emptyList()
                     var ep: List<EpgListing>? = null
 
-
                     val userHist = try { db.interactionDao().getAllInteractions() } catch (e: Exception) { emptyList<Interaction>() }
-                    // YENİ: Favorileri Çekiyoruz
                     val userFavs = try { db.favoriteDao().getAllFavoritesSync() } catch (e: Exception) { emptyList<Favorite>() }
+                    val userPrefs = try { db.userPreferenceDao().getAllPreferences(profile.id) } catch (e: Exception) { emptyList<UserPreference>() }
 
                     if (ContentCache.hasDataFor(profile.id)) {
                         ch = ContentCache.cachedChannels
@@ -474,27 +535,30 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
 
                         ContentCache.update(profile.id, ch, mv, sr, ep)
                     }
-                    // Artık 6 veri döndürüyoruz (Quintuple yetmez, Hexa lazım ama özel sınıf yazmak yerine aşağıda çözelim)
-                    // Basitlik için bir data class tanımlayalım dosyanın altında
-                    DataPackage(ch, mv, sr, ep, userHist, userFavs)
+                    DataPackage(ch, mv, sr, ep, userHist, userFavs, userPrefs)
                 }
 
-                // 2. İŞLEME
-                val (continueWatching, latestItems, recommendedItems) = withContext(Dispatchers.Default) {
+                val channels = dataPackage.channels
+                val movies = dataPackage.movies
+                val series = dataPackage.series
+                val history = dataPackage.history
+                val favorites = dataPackage.favorites
+                val userPrefs = dataPackage.userPrefs
 
-                    // A. DEVAM ET
-                    val unfinished = history.filter { !it.isFinished && it.lastPosition > 0 }
-                        .sortedByDescending { it.timestamp }.take(10)
-                    val continueList = ArrayList<ChannelWithEpg>()
-                    val movieMap = movies.associateBy { it.streamId }
-                    val seriesMap = series.associateBy { it.seriesId }
-
-                    unfinished.forEach { item ->
-                        if (item.streamType == "vod") movieMap[item.streamId]?.let { m -> continueList.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), null)) }
-                        else if (item.streamType == "series") seriesMap[item.streamId]?.let { s -> continueList.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), null)) }
+                val resultList = withContext(Dispatchers.Default) {
+                    val favList = ArrayList<ChannelWithEpg>()
+                    favorites.reversed().take(15).forEach { fav ->
+                        val titleType = when (fav.streamType) {
+                            "series" -> getString(R.string.type_series)
+                            "vod", "movie" -> getString(R.string.type_movie)
+                            else -> ""
+                        }
+                        favList.add(ChannelWithEpg(
+                            LiveStream(fav.streamId, fav.name, fav.image, ""),
+                            if (titleType.isNotEmpty()) EpgListing("0", "0", titleType, "", "", "") else null
+                        ))
                     }
 
-                    // B. SON EKLENENLER
                     val safeMovies = movies.filter { !com.bybora.smartxtream.utils.RecommendationEngine.isAdultContent(it.name) }
                     val safeSeries = series.filter { !com.bybora.smartxtream.utils.RecommendationEngine.isAdultContent(it.name) }
 
@@ -505,35 +569,34 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     sortedMovies.forEach { m -> latest.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
                     sortedSeries.forEach { s -> latest.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", getString(R.string.type_series), "", "", ""))) }
 
-                    // C. YAPAY ZEKA (FAVORİ DESTEKLİ)
                     val excludedIds = (sortedMovies.map { it.streamId } + sortedSeries.map { it.seriesId }).toSet()
                     val topMovieCat = try { db.interactionDao().getTopCategoryForType("vod").firstOrNull()?.categoryId } catch (e: Exception) { null }
                     val topSeriesCat = try { db.interactionDao().getTopCategoryForType("series").firstOrNull()?.categoryId } catch (e: Exception) { null }
 
-                    // --- DEĞİŞİKLİK: 'favorites' PARAMETRESİNİ VERİYORUZ ---
-                    val smartMovies = com.bybora.smartxtream.utils.RecommendationEngine.recommendMovies(safeMovies, history, favorites, topMovieCat, excludedIds)
-                    val smartSeries = com.bybora.smartxtream.utils.RecommendationEngine.recommendSeries(safeSeries, history, favorites, topSeriesCat, excludedIds)
+                    val smartMoviesRaw = com.bybora.smartxtream.utils.RecommendationEngine.recommendMovies(safeMovies, history, favorites, userPrefs, topMovieCat, excludedIds)
+                    val smartSeriesRaw = com.bybora.smartxtream.utils.RecommendationEngine.recommendSeries(safeSeries, history, favorites, userPrefs, topSeriesCat, excludedIds)
 
-                    val recs = ArrayList<ChannelWithEpg>()
-                    smartMovies.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
-                    smartSeries.forEach { s -> recs.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", getString(R.string.type_series), "", "", ""))) }
+                    val finalMovies = ArrayList<ChannelWithEpg>()
+                    val finalSeries = ArrayList<ChannelWithEpg>()
 
-                    if (recs.isEmpty()) {
-                        safeMovies.shuffled().take(8).filter { it.streamId !in excludedIds }.forEach { m -> recs.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), null)) }
-                    }
+                    smartMoviesRaw.forEach { m -> finalMovies.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), EpgListing("0", "0", getString(R.string.type_movie), "", "", ""))) }
+                    smartSeriesRaw.forEach { s -> finalSeries.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), EpgListing("0", "0", getString(R.string.type_series), "", "", ""))) }
 
-                    Triple(continueList, latest, recs)
+                    if (finalMovies.isEmpty()) safeMovies.shuffled().take(8).filter { it.streamId !in excludedIds }.forEach { m -> finalMovies.add(ChannelWithEpg(LiveStream(m.streamId, m.name, m.streamIcon, m.categoryId), null)) }
+                    if (finalSeries.isEmpty()) safeSeries.shuffled().take(8).filter { it.seriesId !in excludedIds }.forEach { s -> finalSeries.add(ChannelWithEpg(LiveStream(s.seriesId, s.name, s.cover ?: s.streamIcon, s.categoryId), null)) }
+
+                    listOf(favList, latest, finalMovies, finalSeries)
                 }
 
-                // 3. EKRANA BAS
-                if (continueWatching.isNotEmpty()) { matchAdapter.submitList(continueWatching); titleMatches.text = getString(R.string.header_continue_watching); titleMatches.visibility = View.VISIBLE; recyclerMatches.visibility = View.VISIBLE } else { titleMatches.visibility = View.GONE; recyclerMatches.visibility = View.GONE }
+                val favoriteItems = resultList[0]
+                val latestItems = resultList[1]
+                val recommendedMovies = resultList[2]
+                val recommendedSeries = resultList[3]
+
+                if (favoriteItems.isNotEmpty()) { favoritesAdapter.submitList(favoriteItems); titleFavorites.visibility = View.VISIBLE; recyclerFavorites.visibility = View.VISIBLE } else { titleFavorites.visibility = View.GONE; recyclerFavorites.visibility = View.GONE }
                 if (latestItems.isNotEmpty()) { latestAdapter.submitList(latestItems); titleLatest.visibility = View.VISIBLE; recyclerLatest.visibility = View.VISIBLE } else { titleLatest.visibility = View.GONE; recyclerLatest.visibility = View.GONE }
-                if (recommendedItems.isNotEmpty()) {
-                    val titleRes = if (history.isNotEmpty() || favorites.isNotEmpty()) R.string.header_recommendations_personal else R.string.header_recommendations
-                    titleRecommendations.setText(titleRes)
-                    recAdapter.submitList(recommendedItems)
-                    titleRecommendations.visibility = View.VISIBLE; recyclerRecommendations.visibility = View.VISIBLE
-                } else { titleRecommendations.visibility = View.GONE; recyclerRecommendations.visibility = View.GONE }
+                if (recommendedMovies.isNotEmpty()) { recMoviesAdapter.submitList(recommendedMovies); titleRecMovies.visibility = View.VISIBLE; recyclerRecMovies.visibility = View.VISIBLE } else { titleRecMovies.visibility = View.GONE; recyclerRecMovies.visibility = View.GONE }
+                if (recommendedSeries.isNotEmpty()) { recSeriesAdapter.submitList(recommendedSeries); titleRecSeries.visibility = View.VISIBLE; recyclerRecSeries.visibility = View.VISIBLE } else { titleRecSeries.visibility = View.GONE; recyclerRecSeries.visibility = View.GONE }
 
                 progressBar.visibility = View.GONE
 
@@ -545,52 +608,15 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         }
     }
 
-    // MainActivity'nin en altına, eski Quintuple yerine bunu ekle:
     data class DataPackage(
         val channels: List<LiveStream>,
         val movies: List<VodStream>,
         val series: List<SeriesStream>,
         val epg: List<EpgListing>?,
         val history: List<Interaction>,
-        val favorites: List<Favorite>
+        val favorites: List<Favorite>,
+        val userPrefs: List<UserPreference>
     )
-
-    // 6 veriyi aynı anda taşımak için yardımcı sınıf
-    data class Sextuple<A, B, C, D, E, F>(val first: A, val second: B, val third: C, val fourth: D, val fifth: E, val sixth: F)
-
-    data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
-
-    private fun isSafeContent(name: String?): Boolean {
-        if (name == null) return false
-        val lowerName = name.lowercase(Locale.forLanguageTag("tr"))
-        val blockedKeywords = listOf("18+", "+18", "adult", "xxx", "porn", "sex", "erotic")
-        return !blockedKeywords.any { lowerName.contains(it) }
-    }
-
-    private fun combineChannelsAndEpg(channels: List<LiveStream>, epgData: List<EpgListing>?): List<ChannelWithEpg> {
-        val epgMap = epgData?.groupBy { it.epgId }
-        val currentTime = System.currentTimeMillis()
-        return channels.map { channel ->
-            val channelWithEpg = ChannelWithEpg(channel = channel, epgNow = null)
-            val channelEpgs = epgMap?.get(channel.streamId.toString())
-            if (!channelEpgs.isNullOrEmpty()) {
-                val currentEpg = channelEpgs.find { epg ->
-                    val start = parseEpgTime(epg.start); val end = parseEpgTime(epg.end)
-                    start != null && end != null && currentTime in start..end
-                }
-                channelWithEpg.epgNow = currentEpg
-            }
-            channelWithEpg
-        }
-    }
-
-    private fun parseEpgTime(timeString: String): Long? {
-        return try {
-            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            sdf.timeZone = TimeZone.getTimeZone("UTC")
-            sdf.parse(timeString)?.time
-        } catch (e: Exception) { null }
-    }
 
     override fun onChannelClick(channelWithEpg: ChannelWithEpg) {
         val type = channelWithEpg.epgNow?.title
@@ -622,7 +648,27 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         putExtra("EXTRA_IS_M3U", profile.isM3u)
     }
 
-    // 1. PROFİL SEÇİM PENCERESİ (GÜNCELLENMİŞ HALİ)
+    private fun clearBottomBar() {
+        textConnectionStatus.setText(R.string.status_not_connected)
+        textConnectionStatus.setTextColor(getColor(android.R.color.darker_gray))
+        textStatusProfileName.setText(R.string.text_no_profile)
+        textExpirationDate.text = "N/A"
+        recyclerFavorites.visibility = View.GONE
+        titleFavorites.visibility = View.GONE
+        recyclerRecMovies.visibility = View.GONE
+        titleRecMovies.visibility = View.GONE
+        recyclerRecSeries.visibility = View.GONE
+        titleRecSeries.visibility = View.GONE
+    }
+
+    private fun formatTimestamp(timestamp: String): String {
+        return try {
+            val date = Date(timestamp.toLong() * 1000)
+            val sdf = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault()).apply { timeZone = TimeZone.getDefault() }
+            sdf.format(date)
+        } catch (e: Exception) { getString(R.string.date_invalid) }
+    }
+
     private fun showProfileSelectionDialog() {
         if (allProfiles.isEmpty()) {
             showAddProfileDialog()
@@ -655,11 +701,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
             btnProfile.textSize = 16f
             btnProfile.setTextColor(android.graphics.Color.WHITE)
             btnProfile.isFocusable = true
-
-            // --- DEĞİŞEN KISIM BURASI (YEŞİL YAPTIK) ---
             btnProfile.setBackgroundResource(R.drawable.selector_glass_button_green)
-            // -------------------------------------------
-
             btnProfile.backgroundTintList = null
             btnProfile.layoutParams = layoutParams
 
@@ -686,7 +728,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         btnClose.setOnClickListener { dialog.dismiss() }
     }
 
-    // 2. YÖNETİM PENCERESİ (GÜNCELLENMİŞ HALİ)
     private fun showManagementDialog() {
         val dialogView = android.view.LayoutInflater.from(this).inflate(R.layout.dialog_profile_management, null)
         val builder = androidx.appcompat.app.AlertDialog.Builder(this)
@@ -715,11 +756,7 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
             btnProfile.textSize = 16f
             btnProfile.setTextColor(android.graphics.Color.WHITE)
             btnProfile.isFocusable = true
-
-            // --- DEĞİŞEN KISIM BURASI (YEŞİL YAPTIK) ---
             btnProfile.setBackgroundResource(R.drawable.selector_glass_button_green)
-            // -------------------------------------------
-
             btnProfile.backgroundTintList = null
             btnProfile.layoutParams = layoutParams
 
@@ -736,7 +773,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
             container.addView(btnProfile)
         }
     }
-// MainActivity.kt -> showEditProfileDialog Fonksiyonu (Düzeltilmiş)
 
     private fun showEditProfileDialog(profileToEdit: com.bybora.smartxtream.database.Profile) {
         val dialogView = android.view.LayoutInflater.from(this).inflate(R.layout.dialog_add_profile, null)
@@ -747,9 +783,9 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         val dialog = builder.create()
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
         dialog.window?.setDimAmount(0.85f)
+        dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN)
         dialog.show()
 
-        // Elemanları Bul
         val tvTitle = dialogView.findViewById<android.widget.TextView>(R.id.tvDialogTitle)
         val etProfileName = dialogView.findViewById<android.widget.EditText>(R.id.etProfileName)
         val etUsername = dialogView.findViewById<android.widget.EditText>(R.id.etUsername)
@@ -759,28 +795,22 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
         val btnCancel = dialogView.findViewById<android.widget.Button>(R.id.btnCancel)
         val btnDelete = dialogView.findViewById<android.widget.Button>(R.id.btnDelete)
 
-        // --- DÜZENLEME MODU AYARLARI (String Resource Kullanımı) ---
-        tvTitle.setText(R.string.title_edit_profile)  // "Profili Düzenle"
-        btnSave.setText(R.string.btn_update)          // "Güncelle"
+        tvTitle.setText(R.string.title_edit_profile)
+        btnSave.setText(R.string.btn_update)
         btnDelete.visibility = android.view.View.VISIBLE
 
-        // Verileri Doldur
         etProfileName.setText(profileToEdit.profileName)
         etUsername.setText(profileToEdit.username)
         etPassword.setText(profileToEdit.password)
         etUrl.setText(profileToEdit.serverUrl)
 
-        // --- BUTON İŞLEVLERİ ---
-
         btnCancel.setOnClickListener { dialog.dismiss() }
 
-        // SİLME İŞLEMİ
         btnDelete.setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle(R.string.title_delete_profile) // "Profili Sil"
-                // İsmi dinamik alıyoruz, geri kalan metni string'den
+                .setTitle(R.string.title_delete_profile)
                 .setMessage("${profileToEdit.profileName}: ${getString(R.string.msg_confirm_delete_profile)}")
-                .setPositiveButton(R.string.btn_yes) { _, _ -> // btn_yes string'i zaten vardır (Evet)
+                .setPositiveButton(R.string.btn_yes) { _, _ ->
                     lifecycleScope.launch {
                         val db = com.bybora.smartxtream.database.AppDatabase.getInstance(this@MainActivity)
                         db.profileDao().deleteProfile(profileToEdit)
@@ -793,7 +823,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                         }
 
                         android.widget.Toast.makeText(this@MainActivity, getString(R.string.msg_profile_deleted), android.widget.Toast.LENGTH_SHORT).show()
-
                         showManagementDialog()
                         dialog.dismiss()
                     }
@@ -802,7 +831,6 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                 .show()
         }
 
-        // GÜNCELLEME İŞLEMİ
         btnSave.setOnClickListener {
             val name = etProfileName.text.toString().trim()
             val user = etUsername.text.toString().trim()
@@ -829,57 +857,12 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                         activeProfile = updatedProfile
                         textStatusProfileName.text = updatedProfile.profileName
                     }
-
-                    // Güncelleme bitince Profil Seçim Ekranına dön
                     showProfileSelectionDialog()
-
                     dialog.dismiss()
                 }
             }
         }
     }
-
-    private fun showActionDialog(profile: Profile) {
-        val options = arrayOf(getString(R.string.btn_edit), getString(R.string.btn_delete))
-        AlertDialog.Builder(this)
-            .setTitle(profile.profileName)
-            .setItems(options) { _, which -> when (which) { 0 -> editProfile(profile); 1 -> deleteProfile(profile) } }
-            .show()
-    }
-
-    private fun editProfile(profile: Profile) { val intent = Intent(this, AddProfileActivity::class.java).apply { putExtra("EXTRA_EDIT_ID", profile.id); putExtra("EXTRA_PROFILE_NAME", profile.profileName); putExtra("EXTRA_USERNAME", profile.username); putExtra("EXTRA_PASSWORD", profile.password); putExtra("EXTRA_SERVER_URL", profile.serverUrl) }; startActivity(intent) }
-
-    private fun clearBottomBar() {
-        textConnectionStatus.setText(R.string.status_not_connected)
-        textConnectionStatus.setTextColor(getColor(android.R.color.darker_gray))
-        textStatusProfileName.setText(R.string.text_no_profile)
-        textExpirationDate.text = "N/A"
-        recyclerRecommendations.visibility = View.GONE; titleRecommendations.visibility = View.GONE
-    }
-
-    private fun openChannelList() { activeProfile?.let { val intent = Intent(this, LiveCategoryActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
-    private fun openFilmList() { activeProfile?.let { val intent = Intent(this, FilmsActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
-    private fun openSeriesList() { activeProfile?.let { val intent = Intent(this, SeriesListActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
-    private fun showProfileWarning() { Toast.makeText(this, getString(R.string.msg_select_profile), Toast.LENGTH_SHORT).show(); showProfileSelectionDialog() }
-
-    private fun formatTimestamp(timestamp: String): String {
-        return try {
-            val expiryLong = timestamp.toLong() * 1000
-            val date = Date(expiryLong)
-            val sdf = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
-            sdf.timeZone = TimeZone.getDefault()
-            sdf.format(date)
-        } catch (e: Exception) {
-            getString(R.string.date_invalid)
-        }
-    }
-
-    private fun getYearFromName(name: String?): Int {
-        if (name.isNullOrEmpty()) return 0
-        val lastMatch = yearRegex.findAll(name).lastOrNull()
-        return lastMatch?.value?.toIntOrNull() ?: 0
-    }
-    // MainActivity.kt dosyasının en altı (ama class parantezi içinde)
 
     private fun showAddProfileDialog() {
         val dialogView = android.view.LayoutInflater.from(this).inflate(R.layout.dialog_add_profile, null)
@@ -889,16 +872,11 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
             .setCancelable(true)
 
         val dialog = builder.create()
-
-        // 1. Pencerenin kendi arka planını şeffaf yap (Bizim glass drawable görünsün diye)
         dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
-
-        // 2. KRİTİK AYAR: Arkadaki ekranı %80 Karart (Dim Amount)
-        // Bu sayede arkadaki film listesi ile senin penceren karışmaz.
         dialog.window?.setDimAmount(0.85f)
+        dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN)
 
         dialog.show()
-
 
         val etProfileName = dialogView.findViewById<android.widget.EditText>(R.id.etProfileName)
         val etUsername = dialogView.findViewById<android.widget.EditText>(R.id.etUsername)
@@ -916,9 +894,8 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
             val url = etUrl.text.toString().trim()
 
             if (name.isEmpty() || username.isEmpty() || password.isEmpty() || url.isEmpty()) {
-                android.widget.Toast.makeText(this, "Lütfen tüm alanları doldurun", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(this, getString(R.string.msg_fill_all_fields), android.widget.Toast.LENGTH_SHORT).show()
             } else {
-                // --- VERİTABANI KAYDI VE OTOMATİK GEÇİŞ ---
                 lifecycleScope.launch {
                     val newProfile = com.bybora.smartxtream.database.Profile(
                         profileName = name,
@@ -929,37 +906,25 @@ class MainActivity : BaseActivity(), OnChannelClickListener {
                     )
 
                     val db = com.bybora.smartxtream.database.AppDatabase.getInstance(this@MainActivity)
-
-                    // 1. Ekle ve ID al
                     val newId = db.profileDao().insertProfile(newProfile)
-
-                    // 2. Yeni profil objesini oluştur
                     val savedProfile = newProfile.copy(id = newId.toInt())
 
-                    // 3. Ayarlara kaydet (Seçili yap)
                     com.bybora.smartxtream.utils.SettingsManager.saveSelectedProfileId(this@MainActivity, newId.toInt())
 
-                    // 4. UI Değişkenlerini Güncelle
                     activeProfile = savedProfile
                     textStatusProfileName.text = savedProfile.profileName
 
                     android.widget.Toast.makeText(this@MainActivity, "${savedProfile.profileName} profiline geçildi", android.widget.Toast.LENGTH_SHORT).show()
 
-                    // 5. İÇERİĞİ YÜKLE (DÜZELTİLEN KISIM BURASI)
-                    // Senin dosyadaki fonksiyonun adı: loadAllContent
                     loadAllContent(savedProfile)
-
                     dialog.dismiss()
                 }
             }
         }
     }
+
+    private fun openChannelList() { activeProfile?.let { val intent = Intent(this, LiveCategoryActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
+    private fun openFilmList() { activeProfile?.let { val intent = Intent(this, FilmsActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
+    private fun openSeriesList() { activeProfile?.let { val intent = Intent(this, SeriesListActivity::class.java); intent.putProfileExtras(it); startActivity(intent) } ?: showProfileWarning() }
+    private fun showProfileWarning() { Toast.makeText(this, getString(R.string.msg_select_profile), Toast.LENGTH_SHORT).show(); showProfileSelectionDialog() }
 }
-// Veri taşıyıcı sınıf (5'li paket)
-data class Quintuple<A, B, C, D, E>(
-    val first: A,
-    val second: B,
-    val third: C,
-    val fourth: D,
-    val fifth: E
-)

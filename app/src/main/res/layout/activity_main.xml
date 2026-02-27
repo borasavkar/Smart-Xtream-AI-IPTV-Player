@@ -157,7 +157,6 @@
                     android:layout_weight="1"
                     android:layout_marginStart="4dp"/>
             </LinearLayout>
-
             <TextView
                 android:id="@+id/title_favorites"
                 android:layout_width="wrap_content"
@@ -197,28 +196,49 @@
                 android:visibility="gone"/>
 
             <TextView
-                android:id="@+id/title_recommendations"
+                android:id="@+id/title_recommended_movies"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/header_recommendations"
+                android:text="@string/header_recommendations_movies"
                 android:textColor="@color/neon_blue"
                 android:textSize="18sp"
-                android:textStyle="bold"/>
+                android:textStyle="bold"
+                android:visibility="gone"/>
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_recommendations"
+                android:id="@+id/recycler_recommended_movies"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_marginTop="8dp"
-                android:layout_marginBottom="24dp"/>
+                android:layout_marginBottom="24dp"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/title_recommended_series"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/header_recommendations_series"
+                android:textColor="@color/neon_purple"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:visibility="gone"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_recommended_series"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="24dp"
+                android:visibility="gone"/>
 
             <TextView
                 android:id="@+id/title_latest"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/Recently_added_new_episodes"
-                android:textColor="@color/neon_purple"
+                android:textColor="#FF9800"
                 android:textSize="18sp"
                 android:textStyle="bold"/>
 
@@ -227,7 +247,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginTop="8dp"/>
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="24dp"/>
 
             <ProgressBar
                 android:id="@+id/home_loader"

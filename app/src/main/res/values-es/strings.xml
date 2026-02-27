@@ -251,4 +251,9 @@
     <string name="msg_confirm_delete_profile">Este perfil será eliminado. ¿Está seguro?</string>
     <string name="msg_profile_deleted">Perfil eliminado</string>
     <string name="msg_fill_all_fields">Por favor, rellene todos los campos</string>
+    <string name="status_premium">♛ PREMIUM</string>
+    <string name="msg_clearing_cache">Limpiando…</string>
+    <string name="msg_cache_cleared">¡Caché borrada! 🚀</string>
+    <string name="header_recommendations_movies">Recomendaciones de Películas</string>
+    <string name="header_recommendations_series">Recomendaciones de Series</string>
 </resources>
